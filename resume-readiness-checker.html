@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume AI-Readiness Checker — Albatross AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #050810;
+    --surface:   #090d1c;
+    --card:      #0d1225;
+    --border:    #172040;
+    --accent:    #00d4ff;
+    --accent2:   #7c3aed;
+    --gold:      #f59e0b;
+    --green:     #10b981;
+    --red:       #ef4444;
+    --text:      #e0eaff;
+    --muted:     #3d5080;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ANIMATED PARTICLE GRID */
+  #canvas-bg {
+    position: fixed; inset: 0;
+    z-index: 0; opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .wrapper {
+    position: relative; z-index: 1;
+    max-width: 860px; margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 44px; flex-wrap: wrap; gap: 12px;
+  }
+
+  .brand { display: flex; align-items: center; gap: 12px; }
+
+  .brand-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(0,212,255,0.2);
+  }
+
+  .brand-name {
+    font-family: var(--font-head); font-weight: 800;
+    font-size: 15px; color: var(--text); letter-spacing: 0.5px;
+  }
+
+  .brand-sub {
+    font-size: 10px; color: var(--muted);
+    letter-spacing: 1.5px; text-transform: uppercase;
+  }
+
+  .header-pill {
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 11px; color: var(--accent);
+  }
+
+  /* HERO */
+  .hero { text-align: center; margin-bottom: 44px; }
+
+  .hero h1 {
+    font-family: var(--font-head); font-weight: 800;
+    font-size: clamp(26px, 5vw, 44px);
+    line-height: 1.1; margin-bottom: 14px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .hero p {
+    font-size: 13px; color: var(--muted);
+    max-width: 520px; margin: 0 auto; line-height: 1.75;
+  }
+
+  /* INPUT AREA */
+  .input-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .input-card:focus-within {
+    border-color: rgba(0,212,255,0.4);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.06);
+  }
+
+  .input-top {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.25);
+  }
+
+  .input-top label {
+    font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .word-counter {
+    font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .word-count {
+    font-family: var(--font-head); font-weight: 700;
+    font-size: 13px; color: var(--accent);
+  }
+
+  textarea {
+    width: 100%; min-height: 220px;
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-mono);
+    font-size: 13px; line-height: 1.7;
+    padding: 18px; resize: vertical;
+  }
+
+  textarea::placeholder { color: var(--muted); opacity: 0.6; }
+
+  .input-bottom {
+    padding: 12px 18px; border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.15);
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px;
+  }
+
+  .input-bottom span { font-size: 10px; color: var(--muted); }
+
+  .scan-btn {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff; border: none; cursor: pointer;
+    font-family: var(--font-head); font-size: 13px; font-weight: 800;
+    padding: 11px 28px; border-radius: 8px;
+    transition: all 0.2s; letter-spacing: 0.5px;
+    position: relative; overflow: hidden;
+  }
+
+  .scan-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0; transition: opacity 0.2s;
+  }
+
+  .scan-btn:hover { transform: translateY(-1px); box-shadow: 0 0 25px rgba(0,212,255,0.4); }
+  .scan-btn:hover::before { opacity: 1; }
+
+  /* ══════════════════════════════════
+     SCANNING OVERLAY — THE MAGIC
+  ══════════════════════════════════ */
+  #scanOverlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(5,8,16,0.96);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+  }
+
+  #scanOverlay.active { display: flex; }
+
+  /* DNA helix spinner */
+  .helix-wrap {
+    width: 80px; height: 80px;
+    position: relative; margin-bottom: 32px;
+  }
+
+  .helix-ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    animation: spin 1.4s linear infinite;
+  }
+
+  .helix-ring:nth-child(1) {
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    animation-duration: 1.0s;
+  }
+
+  .helix-ring:nth-child(2) {
+    inset: 10px;
+    border-bottom-color: var(--accent2);
+    border-left-color: var(--accent2);
+    animation-duration: 0.7s;
+    animation-direction: reverse;
+  }
+
+  .helix-ring:nth-child(3) {
+    inset: 22px;
+    border-top-color: var(--gold);
+    border-right-color: var(--gold);
+    animation-duration: 1.5s;
+  }
+
+  .helix-dot {
+    position: absolute; inset: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--accent), var(--accent2));
+    animation: pulse-dot 1.2s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(0,212,255,0.8);
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.4); opacity: 0.6; }
+  }
+
+  /* Scanning status text */
+  .scan-status {
+    font-family: var(--font-head); font-size: 22px; font-weight: 800;
+    color: var(--text); margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .scan-substatus {
+    font-size: 12px; color: var(--muted);
+    letter-spacing: 1px; text-align: center;
+    min-height: 18px; margin-bottom: 36px;
+  }
+
+  /* Scanning beam on resume text */
+  .scan-doc-wrap {
+    width: min(480px, 90vw);
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    position: relative; margin-bottom: 32px;
+    max-height: 180px;
+  }
+
+  .scan-beam {
+    position: absolute; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(0,212,255,0.3) 20%,
+      rgba(0,212,255,1) 50%,
+      rgba(0,212,255,0.3) 80%,
+      transparent 100%);
+    box-shadow: 0 0 20px rgba(0,212,255,0.8), 0 0 60px rgba(0,212,255,0.3);
+    animation: beam-scan 1.8s ease-in-out infinite;
+    z-index: 2;
+  }
+
+  @keyframes beam-scan {
+    0%   { top: 0%; opacity: 1; }
+    90%  { top: 100%; opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  .scan-doc-text {
+    padding: 16px;
+    font-size: 10px; color: rgba(224,234,255,0.25);
+    line-height: 1.6; user-select: none;
+    overflow: hidden;
+  }
+
+  .scan-doc-text .highlighted {
+    color: rgba(0,212,255,0.9);
+    background: rgba(0,212,255,0.08);
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+
+  /* Progress checks */
+  .scan-checks {
+    display: flex; flex-direction: column; gap: 8px;
+    width: min(400px, 90vw);
+  }
+
+  .scan-check {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 12px; color: var(--muted);
+    opacity: 0; transform: translateX(-10px);
+    transition: all 0.4s ease;
+  }
+
+  .scan-check.show { opacity: 1; transform: translateX(0); }
+  .scan-check.done { color: var(--text); }
+
+  .check-icon {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .scan-check.done .check-icon {
+    background: var(--green); border-color: var(--green); color: #000;
+  }
+
+  .scan-check.active .check-icon {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(0,212,255,0.6);
+    animation: spin 1s linear infinite;
+  }
+
+  /* ══════════════════════════════════
+     RESULTS
+  ══════════════════════════════════ */
+  .results-section {
+    display: none; animation: fadeUp 0.5s ease;
+  }
+
+  .results-section.visible { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Score banner */
+  .score-banner {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 24px;
+    display: flex; align-items: center; gap: 24px;
+    margin-bottom: 18px; flex-wrap: wrap;
+    position: relative; overflow: hidden;
+  }
+
+  .score-banner::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent2), var(--accent), var(--gold));
+  }
+
+  /* Circular gauge */
+  .gauge-wrap { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+
+  .gauge-wrap svg { width: 100px; height: 100px; transform: rotate(-90deg); }
+
+  .gauge-bg  { fill: none; stroke: var(--border); stroke-width: 7; }
+  .gauge-arc { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1); }
+
+  .gauge-num {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+
+  .gauge-val {
+    font-family: var(--font-head); font-weight: 800;
+    font-size: 26px; line-height: 1;
+  }
+
+  .gauge-lbl {
+    font-size: 9px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted); margin-top: 2px;
+  }
+
+  .score-info { flex: 1; min-width: 200px; }
+
+  .score-grade {
+    font-family: var(--font-head); font-size: 16px; font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .score-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  /* Category grid */
+  .cat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 18px;
+  }
+
+  @media (max-width: 600px) { .cat-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 380px) { .cat-grid { grid-template-columns: 1fr; } }
+
+  .cat-tile {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px;
+    position: relative; overflow: hidden;
+    transition: transform 0.2s;
+    animation: tileIn 0.4s ease both;
+  }
+
+  .cat-tile:hover { transform: translateY(-2px); }
+
+  @keyframes tileIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .cat-tile::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2px;
+  }
+
+  .cat-icon  { font-size: 18px; margin-bottom: 8px; }
+  .cat-name  { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .cat-score { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+  .cat-bar-track { height: 4px; background: var(--surface); border-radius: 2px; margin-top: 8px; }
+  .cat-bar-fill  { height: 100%; border-radius: 2px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+
+  /* Issues & Wins */
+  .two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px; margin-bottom: 18px;
+  }
+
+  @media (max-width: 560px) { .two-col { grid-template-columns: 1fr; } }
+
+  .list-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+
+  .list-head {
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+    font-family: var(--font-head); font-size: 13px; font-weight: 700;
+  }
+
+  .list-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; }
+
+  .list-item {
+    display: flex; gap: 8px; align-items: flex-start;
+    font-size: 11px; color: var(--muted); line-height: 1.5;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .list-item .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0; margin-top: 4px;
+  }
+
+  /* Keyword heatmap */
+  .keywords-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 18px;
+  }
+
+  .kw-head {
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+    font-family: var(--font-head); font-size: 13px; font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .kw-body { padding: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .kw-tag {
+    padding: 5px 10px; border-radius: 20px;
+    font-size: 11px; border: 1px solid;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .kw-tag.found    { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3); color: var(--green); }
+  .kw-tag.missing  { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: var(--red); opacity: 0.7; }
+
+  /* GATE */
+  .gate-card {
+    background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(0,212,255,0.05));
+    border: 1px solid rgba(124,58,237,0.28);
+    border-radius: 14px; padding: 30px 24px;
+    margin-bottom: 24px; text-align: center;
+  }
+
+  .gate-card h2 {
+    font-family: var(--font-head); font-size: 20px; font-weight: 800;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .gate-card p { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+
+  .gate-steps {
+    display: flex; justify-content: center;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 24px;
+  }
+
+  .gate-step {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; transition: all 0.2s; min-width: 160px;
+  }
+
+  .gate-step:hover  { border-color: var(--accent); background: rgba(0,212,255,0.05); }
+  .gate-step.done   { border-color: var(--green); background: rgba(16,185,129,0.07); }
+
+  .step-icon  { font-size: 22px; }
+  .step-title { font-size: 12px; font-weight: 600; font-family: var(--font-head); color: var(--text); }
+  .step-sub   { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .check {
+    margin-left: auto; width: 20px; height: 20px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0; transition: all 0.2s;
+  }
+
+  .gate-step.done .check { background: var(--green); border-color: var(--green); color: #000; }
+
+  .download-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff; font-family: var(--font-head);
+    font-size: 14px; font-weight: 800;
+    padding: 14px 32px; border-radius: 10px;
+    border: none; cursor: pointer;
+    opacity: 0.3; pointer-events: none; transition: all 0.25s;
+  }
+
+  .download-btn.unlocked {
+    opacity: 1; pointer-events: all;
+    box-shadow: 0 0 30px rgba(0,212,255,0.3);
+  }
+
+  .download-btn.unlocked:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 50px rgba(0,212,255,0.5);
+  }
+
+  .gate-note { font-size: 10px; color: var(--muted); margin-top: 12px; }
+
+  /* FOOTER */
+  .footer { text-align: center; padding-top: 32px; border-top: 1px solid var(--border); }
+  .footer p { font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<!-- PARTICLE CANVAS -->
+<canvas id="canvas-bg"></canvas>
+
+<!-- SCANNING OVERLAY -->
+<div id="scanOverlay">
+  <div class="helix-wrap">
+    <div class="helix-ring"></div>
+    <div class="helix-ring"></div>
+    <div class="helix-ring"></div>
+    <div class="helix-dot"></div>
+  </div>
+  <div class="scan-status" id="scanStatus">Initializing AI Scanner</div>
+  <div class="scan-substatus" id="scanSubStatus">Preparing analysis modules...</div>
+
+  <div class="scan-doc-wrap">
+    <div class="scan-beam"></div>
+    <div class="scan-doc-text" id="scanDocPreview"></div>
+  </div>
+
+  <div class="scan-checks" id="scanChecks">
+    <div class="scan-check" id="chk0"><div class="check-icon">◐</div>Parsing document structure</div>
+    <div class="scan-check" id="chk1"><div class="check-icon">◐</div>Extracting keywords & skills</div>
+    <div class="scan-check" id="chk2"><div class="check-icon">◐</div>Checking ATS compatibility</div>
+    <div class="scan-check" id="chk3"><div class="check-icon">◐</div>Scoring against AI hiring models</div>
+    <div class="scan-check" id="chk4"><div class="check-icon">◐</div>Analyzing impact language</div>
+    <div class="scan-check" id="chk5"><div class="check-icon">◐</div>Generating recommendations</div>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-icon">🦅</div>
+      <div>
+        <div class="brand-name">ALBATROSS AI</div>
+        <div class="brand-sub">Tools for the AI-Powered Builder</div>
+      </div>
+    </div>
+    <div class="header-pill">Free Tool</div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Resume AI-Readiness Checker</h1>
+    <p>Paste your resume and find out if AI-powered hiring systems will even read it — before a real recruiter does. Get your ATS score, keyword gaps, and a fix list in seconds.</p>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-card">
+    <div class="input-top">
+      <label>Paste Your Resume Text</label>
+      <div class="word-counter">Words: <span class="word-count" id="wordCount">0</span></div>
+    </div>
+    <textarea id="resumeInput"
+      placeholder="Paste the full text of your resume here — work experience, skills, education, everything. The more you paste, the more accurate your score."
+      oninput="onType()"></textarea>
+    <div class="input-bottom">
+      <span id="charInfo">0 characters · 0 words</span>
+      <button class="scan-btn" onclick="startScan()">🔬 Scan My Resume</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-section" id="resultsSection">
+
+    <!-- SCORE BANNER -->
+    <div class="score-banner">
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="gauge-bg" cx="50" cy="50" r="42"/>
+          <circle class="gauge-arc" id="gaugeArc" cx="50" cy="50" r="42"
+            stroke-dasharray="264" stroke-dashoffset="264"/>
+        </svg>
+        <div class="gauge-num">
+          <span class="gauge-val" id="gaugeVal">0</span>
+          <span class="gauge-lbl">/ 100</span>
+        </div>
+      </div>
+      <div class="score-info">
+        <div class="score-grade" id="scoreGrade">—</div>
+        <div class="score-desc" id="scoreDesc">—</div>
+      </div>
+    </div>
+
+    <!-- CATEGORY TILES -->
+    <div class="cat-grid" id="catGrid"></div>
+
+    <!-- WINS + ISSUES -->
+    <div class="two-col">
+      <div class="list-card">
+        <div class="list-head" style="color:var(--green)">✅ What's Working</div>
+        <div class="list-body" id="winsList"></div>
+      </div>
+      <div class="list-card">
+        <div class="list-head" style="color:var(--red)">🚨 Critical Issues</div>
+        <div class="list-body" id="issuesList"></div>
+      </div>
+    </div>
+
+    <!-- KEYWORD HEATMAP -->
+    <div class="keywords-card">
+      <div class="kw-head">
+        <span>🔍 AI Keyword Heatmap</span>
+        <span style="font-size:10px; color:var(--muted)" id="kwSummary"></span>
+      </div>
+      <div class="kw-body" id="kwBody"></div>
+    </div>
+
+  </div>
+
+  <!-- DOWNLOAD GATE -->
+  <div class="gate-card">
+    <h2>⬇️ Download This Tool Free</h2>
+    <p>Use it on any resume, any time — offline, no login, no tracking.<br>Subscribe to Albatross AI and like the tool to unlock your download.</p>
+    <div class="gate-steps">
+      <div class="gate-step" id="step-sub" onclick="markDone('step-sub')">
+        <div class="step-icon">📺</div>
+        <div>
+          <div class="step-title">Subscribe YouTube</div>
+          <div class="step-sub"><a href="https://youtube.com/@albatrossagent" target="_blank" style="color:inherit">@albatrossagent</a></div>
+        </div>
+        <div class="check">✓</div>
+      </div>
+      <div class="gate-step" id="step-linkedin" onclick="markDone('step-linkedin')">
+        <div class="step-icon">💼</div>
+        <div>
+          <div class="step-title">Follow LinkedIn</div>
+          <div class="step-sub"><a href="https://www.linkedin.com/in/chris-brown-2657aa3a4" target="_blank" style="color:inherit">Chris Brown</a></div>
+        </div>
+        <div class="check">✓</div>
+      </div>
+      <div class="gate-step" id="step-twitter" onclick="markDone('step-twitter')">
+        <div class="step-icon">𝕏</div>
+        <div>
+          <div class="step-title">Follow Twitter/X</div>
+          <div class="step-sub"><a href="https://x.com/albatrossflyon" target="_blank" style="color:inherit">@albatrossflyon</a></div>
+        </div>
+        <div class="check">✓</div>
+      </div>
+      <div class="gate-step" id="step-facebook" onclick="markDone('step-facebook')">
+        <div class="step-icon">📘</div>
+        <div>
+          <div class="step-title">Follow Facebook</div>
+          <div class="step-sub"><a href="https://www.facebook.com/share/1bnjF9fdUg/" target="_blank" style="color:inherit">Albatross AI</a></div>
+        </div>
+        <div class="check">✓</div>
+      </div>
+      <div class="gate-step" id="step-discord" onclick="markDone('step-discord')">
+        <div class="step-icon">🎮</div>
+        <div>
+          <div class="step-title">Join Discord</div>
+          <div class="step-sub"><a href="https://discord.gg/DSxeXEBx" target="_blank" style="color:inherit">Albatross AI Server</a></div>
+        </div>
+        <div class="check">✓</div>
+      </div>
+      <div class="gate-step" id="step-like" onclick="markDone('step-like')">
+        <div class="step-icon">👍</div>
+        <div>
+          <div class="step-title">Like This Tool</div>
+          <div class="step-sub">Click to confirm</div>
+        </div>
+        <div class="check">✓</div>
+      </div>
+    </div>
+
+    <button class="download-btn" id="downloadBtn" onclick="downloadTool()">
+      ⬇️ Download HTML File
+    </button>
+    <div class="gate-note">Single HTML file · No install needed · Works offline · Free forever</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>Scoring is heuristic-based and simulates common ATS behavior. Not a guarantee of hiring outcome.<br>
+    Built by <a href="#">Albatross AI</a> — Free tools for AI builders.<br>
+    <a href="#">YouTube</a> · <a href="#">LinkedIn</a> · <a href="#">More Free Tools →</a></p>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════
+// PARTICLE CANVAS BACKGROUND
+// ══════════════════════════════════
+const canvas = document.getElementById('canvas-bg');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let W, H;
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+
+function initParticles() {
+  particles = [];
+  const count = Math.floor((W * H) / 14000);
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.2 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.5 + 0.1,
+      color: Math.random() > 0.5 ? '0,212,255' : '124,58,237'
+    });
+  }
+}
+
+function drawParticles() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach((p, i) => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x = W;
+    if (p.x > W) p.x = 0;
+    if (p.y < 0) p.y = H;
+    if (p.y > H) p.y = 0;
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
+    ctx.fill();
+
+    // Connect nearby particles
+    for (let j = i + 1; j < particles.length; j++) {
+      const q = particles[j];
+      const dx = p.x - q.x, dy = p.y - q.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 100) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = `rgba(0,212,255,${0.06 * (1 - dist/100)})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  });
+  requestAnimationFrame(drawParticles);
+}
+
+resize();
+initParticles();
+drawParticles();
+window.addEventListener('resize', () => { resize(); initParticles(); });
+
+// ══════════════════════════════════
+// TYPING HANDLER
+// ══════════════════════════════════
+function onType() {
+  const txt  = document.getElementById('resumeInput').value;
+  const words = txt.trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById('wordCount').textContent = words;
+  document.getElementById('charInfo').textContent  = `${txt.length} characters · ${words} words`;
+}
+
+// ══════════════════════════════════
+// SCAN ANIMATION SEQUENCE
+// ══════════════════════════════════
+const scanSteps = [
+  { status: 'Parsing Document',      sub: 'Reading structure and sections...',    duration: 600 },
+  { status: 'Extracting Keywords',   sub: 'Identifying skills and technologies...', duration: 700 },
+  { status: 'ATS Compatibility',     sub: 'Testing against hiring system patterns...', duration: 650 },
+  { status: 'AI Scoring Model',      sub: 'Running against recruiter heuristics...', duration: 800 },
+  { status: 'Analyzing Language',    sub: 'Checking impact verbs and metrics...', duration: 600 },
+  { status: 'Building Report',       sub: 'Compiling recommendations...', duration: 500 },
+];
+
+function startScan() {
+  const txt = document.getElementById('resumeInput').value.trim();
+  if (!txt || txt.split(/\s+/).length < 20) {
+    alert('Please paste at least a few lines of your resume to get an accurate score.');
+    return;
+  }
+
+  // Show overlay
+  const overlay = document.getElementById('scanOverlay');
+  overlay.classList.add('active');
+
+  // Show resume preview in scan window
+  document.getElementById('scanDocPreview').textContent = txt.substring(0, 400) + '...';
+
+  // Reset checks
+  for (let i = 0; i < 6; i++) {
+    const el = document.getElementById('chk' + i);
+    el.className = 'scan-check';
+    el.querySelector('.check-icon').textContent = '◐';
+  }
+
+  let delay = 200;
+  scanSteps.forEach((step, i) => {
+    setTimeout(() => {
+      document.getElementById('scanStatus').textContent    = step.status;
+      document.getElementById('scanSubStatus').textContent = step.sub;
+
+      const chk = document.getElementById('chk' + i);
+      chk.classList.add('show', 'active');
+
+      if (i > 0) {
+        const prev = document.getElementById('chk' + (i-1));
+        prev.classList.remove('active');
+        prev.classList.add('done');
+        prev.querySelector('.check-icon').textContent = '✓';
+      }
+    }, delay);
+    delay += step.duration;
+  });
+
+  // Finish
+  setTimeout(() => {
+    const last = document.getElementById('chk5');
+    last.classList.remove('active');
+    last.classList.add('done');
+    last.querySelector('.check-icon').textContent = '✓';
+
+    document.getElementById('scanStatus').textContent    = 'Analysis Complete';
+    document.getElementById('scanSubStatus').textContent = 'Rendering your results...';
+
+    setTimeout(() => {
+      overlay.classList.remove('active');
+      renderResults(txt);
+    }, 700);
+  }, delay + 200);
+}
+
+// ══════════════════════════════════
+// SCORING ENGINE
+// ══════════════════════════════════
+const AI_KEYWORDS = {
+  found: [], missing: []
+};
+
+const TARGET_KEYWORDS = [
+  'machine learning','artificial intelligence','deep learning','python','tensorflow',
+  'pytorch','data analysis','nlp','natural language','computer vision','api',
+  'cloud','aws','azure','gcp','docker','kubernetes','git','agile','scrum',
+  'sql','javascript','react','node','automation','workflow','llm','prompt',
+  'claude','gpt','openai','anthropic','model','training','inference',
+  'communication','leadership','management','strategy','collaboration',
+  'problem solving','analytical','results','achieved','improved','reduced',
+  'increased','launched','built','designed','developed','implemented'
+];
+
+function scoreResume(txt) {
+  const lower  = txt.toLowerCase();
+  const words  = txt.trim().split(/\s+/).filter(Boolean);
+  const wc     = words.length;
+
+  // 1. ATS FORMAT (0-100)
+  let ats = 40;
+  if (wc > 200) ats += 15;
+  if (wc > 400) ats += 10;
+  if (/\b(experience|education|skills|summary|objective|work|employment)\b/i.test(txt)) ats += 20;
+  if (/\b(20\d\d|19\d\d)\b/.test(txt)) ats += 10;
+  if (/[•\-\*]/.test(txt)) ats += 5;
+  if (/[<>{}\[\]]/.test(txt)) ats -= 20;
+  ats = Math.min(100, Math.max(0, ats));
+
+  // 2. KEYWORDS (0-100)
+  let kwFound = 0;
+  AI_KEYWORDS.found = [];
+  AI_KEYWORDS.missing = [];
+  TARGET_KEYWORDS.forEach(kw => {
+    if (lower.includes(kw)) {
+      kwFound++;
+      AI_KEYWORDS.found.push(kw);
+    } else {
+      AI_KEYWORDS.missing.push(kw);
+    }
+  });
+  const kw = Math.min(100, Math.round((kwFound / TARGET_KEYWORDS.length) * 100 * 1.8));
+
+  // 3. IMPACT LANGUAGE (0-100)
+  let impact = 20;
+  const impactVerbs = (lower.match(/\b(achieved|improved|reduced|increased|launched|built|designed|developed|implemented|led|managed|created|delivered|drove|grew|optimized|streamlined|automated|transformed|generated|saved|spearheaded|orchestrated|established)\b/g) || []).length;
+  impact += Math.min(50, impactVerbs * 8);
+  if (/\d+%/.test(txt)) impact += 15;
+  if (/\$[\d,]+/.test(txt)) impact += 10;
+  impact = Math.min(100, Math.max(0, impact));
+
+  // 4. COMPLETENESS (0-100)
+  let complete = 20;
+  if (/\b(summary|objective|profile)\b/i.test(txt)) complete += 20;
+  if (/\b(experience|work|employment)\b/i.test(txt)) complete += 20;
+  if (/\b(education|degree|university|college|school)\b/i.test(txt)) complete += 20;
+  if (/\b(skills|technologies|tools|proficient|expertise)\b/i.test(txt)) complete += 15;
+  if (/\b(contact|email|phone|linkedin)\b/i.test(txt)) complete += 5;
+  complete = Math.min(100, Math.max(0, complete));
+
+  // 5. READABILITY (0-100)
+  let read = 50;
+  const avgWordLen = txt.replace(/\s/g,'').length / Math.max(wc, 1);
+  if (avgWordLen < 6.5) read += 20;
+  if (wc > 300 && wc < 1000) read += 20;
+  if (wc < 100) read -= 30;
+  if (wc > 1500) read -= 15;
+  read = Math.min(100, Math.max(0, read));
+
+  // 6. AI-SPECIFIC RELEVANCE (0-100)
+  let aiRel = 10;
+  const aiTerms = ['ai','machine learning','llm','prompt','automation','gpt','claude','openai','anthropic','neural','model','data','python','api','workflow'];
+  aiTerms.forEach(t => { if (lower.includes(t)) aiRel += 6; });
+  aiRel = Math.min(100, Math.max(0, aiRel));
+
+  const total = Math.round((ats + kw + impact + complete + read + aiRel) / 6);
+
+  return { total, cats: { ats, kw, impact, complete, read, aiRel }, wc, kwFound };
+}
+
+function getGrade(score) {
+  if (score >= 85) return { label: 'AI-Ready ✅',   color: '#10b981', desc: 'Your resume will pass most AI screening systems. Strong keyword density and impact language detected.' };
+  if (score >= 70) return { label: 'Good Shape 👍', color: '#00d4ff', desc: 'Solid foundation. A few targeted improvements will significantly boost your ATS pass rate.' };
+  if (score >= 55) return { label: 'Needs Work ⚠️', color: '#f59e0b', desc: 'You\'re getting filtered before human eyes. Several critical gaps need addressing.' };
+  if (score >= 40) return { label: 'At Risk 🚨',    color: '#ef4444', desc: 'High chance of automatic rejection. Missing key signals AI hiring tools look for.' };
+  return { label: 'Critical ❌', color: '#ef4444', desc: 'This resume is likely invisible to AI hiring systems. Significant rebuild recommended.' };
+}
+
+function getWins(txt, cats) {
+  const wins = [];
+  if (cats.ats > 60)    wins.push('Clean document structure detected');
+  if (cats.impact > 60) wins.push('Strong use of impact verbs');
+  if (/\d+%/.test(txt)) wins.push('Quantified achievements found');
+  if (cats.kw > 50)     wins.push('Good keyword coverage for AI field');
+  if (cats.complete > 60) wins.push('Key resume sections present');
+  if (/linkedin/i.test(txt)) wins.push('LinkedIn profile referenced');
+  if (/github/i.test(txt))   wins.push('GitHub portfolio included');
+  return wins.slice(0, 4);
+}
+
+function getIssues(txt, cats, wc) {
+  const issues = [];
+  if (wc < 200)         issues.push('Resume too short — ATS systems expect 300–700 words');
+  if (cats.kw < 40)     issues.push('Low keyword density — add more AI/tech terminology');
+  if (cats.impact < 40) issues.push('Weak impact language — add measurable achievements');
+  if (!/\d+%/.test(txt)) issues.push('No quantified results — use percentages and numbers');
+  if (cats.complete < 50) issues.push('Missing key sections (summary, skills, or education)');
+  if (cats.aiRel < 30)  issues.push('Low AI-field relevance — add AI tools and projects');
+  if (!/linkedin/i.test(txt.toLowerCase())) issues.push('No LinkedIn URL found');
+  return issues.slice(0, 4);
+}
+
+// ══════════════════════════════════
+// RENDER RESULTS
+// ══════════════════════════════════
+function renderResults(txt) {
+  const result = scoreResume(txt);
+  const g = getGrade(result.total);
+
+  document.getElementById('resultsSection').classList.add('visible');
+
+  // Gauge
+  const circumference = 264;
+  const offset = circumference - (result.total / 100) * circumference;
+  const arc = document.getElementById('gaugeArc');
+  arc.style.stroke = g.color;
+  setTimeout(() => { arc.style.strokeDashoffset = offset; }, 100);
+
+  document.getElementById('gaugeVal').textContent  = result.total;
+  document.getElementById('gaugeVal').style.color  = g.color;
+  document.getElementById('scoreGrade').textContent = g.label;
+  document.getElementById('scoreGrade').style.color = g.color;
+  document.getElementById('scoreDesc').textContent  = g.desc;
+
+  // Category tiles
+  const catDefs = [
+    { key:'ats',      icon:'🤖', label:'ATS Format',        color:'#00d4ff' },
+    { key:'kw',       icon:'🔑', label:'Keywords',          color:'#7c3aed' },
+    { key:'impact',   icon:'💥', label:'Impact Language',   color:'#f59e0b' },
+    { key:'complete', icon:'📋', label:'Completeness',      color:'#10b981' },
+    { key:'read',     icon:'📖', label:'Readability',       color:'#60a5fa' },
+    { key:'aiRel',    icon:'🧠', label:'AI Relevance',      color:'#f472b6' },
+  ];
+
+  document.getElementById('catGrid').innerHTML = catDefs.map((c, i) => {
+    const val = Math.round(result.cats[c.key]);
+    return `
+      <div class="cat-tile" style="animation-delay:${i*0.08}s">
+        <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:${c.color}"></div>
+        <div class="cat-icon">${c.icon}</div>
+        <div class="cat-name">${c.label}</div>
+        <div class="cat-score" style="color:${c.color}">${val}</div>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill" style="background:${c.color}; width:0%" id="cbar${i}"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  setTimeout(() => {
+    catDefs.forEach((c, i) => {
+      const val = Math.round(result.cats[c.key]);
+      const bar = document.getElementById('cbar' + i);
+      if (bar) bar.style.width = val + '%';
+    });
+  }, 100);
+
+  // Wins
+  const wins = getWins(txt, result.cats);
+  document.getElementById('winsList').innerHTML = wins.map((w, i) =>
+    `<div class="list-item" style="animation-delay:${i*0.1}s">
+      <div class="dot" style="background:var(--green)"></div>${w}
+    </div>`
+  ).join('') || '<div class="list-item"><div class="dot" style="background:var(--muted)"></div>No major wins detected yet</div>';
+
+  // Issues
+  const issues = getIssues(txt, result.cats, result.wc);
+  document.getElementById('issuesList').innerHTML = issues.map((iss, i) =>
+    `<div class="list-item" style="animation-delay:${i*0.1}s">
+      <div class="dot" style="background:var(--red)"></div>${iss}
+    </div>`
+  ).join('') || '<div class="list-item"><div class="dot" style="background:var(--green)"></div>No critical issues found</div>';
+
+  // Keywords
+  const found   = AI_KEYWORDS.found.slice(0, 18);
+  const missing = AI_KEYWORDS.missing.slice(0, 12);
+  document.getElementById('kwSummary').textContent = `${found.length} found · ${missing.length} missing`;
+  document.getElementById('kwBody').innerHTML = [
+    ...found.map((kw, i) => `<span class="kw-tag found" style="animation-delay:${i*0.04}s">${kw}</span>`),
+    ...missing.slice(0,8).map((kw, i) => `<span class="kw-tag missing" style="animation-delay:${(found.length+i)*0.04}s">${kw}</span>`)
+  ].join('');
+
+  document.getElementById('resultsSection').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ══════════════════════════════════
+// GATE
+// ══════════════════════════════════
+const done = { 'step-sub': false, 'step-linkedin': false, 'step-twitter': false, 'step-facebook': false, 'step-discord': false, 'step-like': false };
+
+function markDone(id) {
+  done[id] = true;
+  document.getElementById(id).classList.add('done');
+  if (Object.values(done).every(Boolean)) {
+    document.getElementById('downloadBtn').classList.add('unlocked');
+  }
+}
+
+function downloadTool() {
+  const html = document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'albatross-resume-readiness-checker.html';
+  a.click();
+}
+</script>
+</body>
+</html>

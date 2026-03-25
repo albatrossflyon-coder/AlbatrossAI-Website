@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Cost Estimator — Albatross AI</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tool-container {
+      background: var(--grey-mid);
+      padding: 2.5rem;
+      border-radius: 16px;
+      max-width: 600px;
+      margin: 2rem auto;
+      border: 1px solid var(--grey-light);
+    }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.5rem; color: var(--white); font-weight: 600; }
+    input, select {
+      width: 100%;
+      padding: 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--grey-light);
+      background: var(--grey-dark);
+      color: var(--white);
+      font-size: 1rem;
+    }
+    .result-box {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--grey-dark);
+      border-radius: 12px;
+      border-left: 4px solid var(--blue);
+      display: none;
+    }
+    .result-value { font-size: 2rem; font-weight: 800; color: var(--blue); }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo" style="text-decoration: none;">
+      <img src="assets/images/Albatross AI logo.png" alt="Albatross AI Logo" />
+      <span>Albatross AI</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="tools.html">Back to Tools</a></li>
+    </ul>
+  </nav>
+
+  <section class="container">
+    <div style="text-align: center; margin-top: 4rem;">
+      <h1>AI <span class="gradient-text">Cost Estimator</span></h1>
+      <p>Estimate your monthly API and compute spend.</p>
+    </div>
+
+    <div class="tool-container">
+      <div class="form-group">
+        <label for="model">Primary Model</label>
+        <select id="model">
+          <option value="sonnet">Claude 3.5 Sonnet ($15/1M tokens)</option>
+          <option value="opus">Claude 3 Opus ($75/1M tokens)</option>
+          <option value="gpt4o">GPT-4o ($15/1M tokens)</option>
+          <option value="gpt4o-mini">GPT-4o mini ($0.15/1M tokens)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="tokens">Monthly Tokens (Millions)</label>
+        <input type="number" id="tokens" value="1" step="0.1" min="0">
+      </div>
+      <div class="form-group">
+        <label for="agents">Number of Autonomous Agents</label>
+        <input type="number" id="agents" value="1" min="0">
+      </div>
+      <button class="btn-primary" style="width: 100%;" onclick="calculateCost()">Calculate Monthly Spend</button>
+
+      <div class="result-box" id="resultBox">
+        <p>Estimated Monthly Cost:</p>
+        <div class="result-value" id="resultValue">$0.00</div>
+        <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">*Excludes storage and specialized compute. Based on standard API pricing.</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function calculateCost() {
+      const model = document.getElementById('model').value;
+      const tokens = parseFloat(document.getElementById('tokens').value);
+      const agents = parseInt(document.getElementById('agents').value);
+      
+      let rate = 0;
+      if (model === 'sonnet') rate = 15;
+      if (model === 'opus') rate = 75;
+      if (model === 'gpt4o') rate = 15;
+      if (model === 'gpt4o-mini') rate = 0.15;
+
+      const tokenCost = tokens * rate;
+      const infrastructureCost = agents * 10; // Nominal $10 per agent for infra
+      const total = tokenCost + infrastructureCost;
+
+      document.getElementById('resultValue').innerText = '$' + total.toFixed(2);
+      document.getElementById('resultBox').style.display = 'block';
+    }
+  </script>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="margin-top: 4rem;">
+    <div class="container">
+      <p>&copy; 2026 Albatross AI. All rights reserved.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI ROI Calculator — Albatross AI</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tool-container {
+      background: var(--grey-mid);
+      padding: 2.5rem;
+      border-radius: 16px;
+      max-width: 600px;
+      margin: 2rem auto;
+      border: 1px solid var(--grey-light);
+    }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.5rem; color: var(--white); font-weight: 600; }
+    input {
+      width: 100%;
+      padding: 0.8rem;
+      border-radius: 8px;
+      border: 1px solid var(--grey-light);
+      background: var(--grey-dark);
+      color: var(--white);
+      font-size: 1rem;
+    }
+    .result-box {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--grey-dark);
+      border-radius: 12px;
+      border-left: 4px solid var(--blue);
+      display: none;
+    }
+    .result-value { font-size: 2rem; font-weight: 800; color: var(--blue); }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo" style="text-decoration: none;">
+      <img src="assets/images/Albatross AI logo.png" alt="Albatross AI Logo" />
+      <span>Albatross AI</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="tools.html">Back to Tools</a></li>
+    </ul>
+  </nav>
+
+  <section class="container">
+    <div style="text-align: center; margin-top: 4rem;">
+      <h1>AI <span class="gradient-text">ROI Calculator</span></h1>
+      <p>Calculate the return on your AI investment.</p>
+    </div>
+
+    <div class="tool-container">
+      <div class="form-group">
+        <label for="hours">Human Hours Saved / Month</label>
+        <input type="number" id="hours" value="40" min="0">
+      </div>
+      <div class="form-group">
+        <label for="rate">Hourly Labor Rate ($)</label>
+        <input type="number" id="rate" value="50" min="0">
+      </div>
+      <div class="form-group">
+        <label for="cost">Monthly AI Cost ($)</label>
+        <input type="number" id="cost" value="100" min="0">
+      </div>
+      <button class="btn-primary" style="width: 100%;" onclick="calculateROI()">Calculate ROI</button>
+
+      <div class="result-box" id="resultBox">
+        <p>Monthly Net Savings:</p>
+        <div class="result-value" id="resultValue">$0.00</div>
+        <p id="roiText" style="font-size: 1.2rem; font-weight: 700; margin-top: 1rem;"></p>
+        <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">*Based on total cost of labor vs. AI expenses.</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function calculateROI() {
+      const hours = parseFloat(document.getElementById('hours').value);
+      const rate = parseFloat(document.getElementById('rate').value);
+      const cost = parseFloat(document.getElementById('cost').value);
+      
+      const humanCost = hours * rate;
+      const savings = humanCost - cost;
+      const roi = (savings / cost) * 100;
+
+      document.getElementById('resultValue').innerText = '$' + savings.toFixed(2);
+      document.getElementById('roiText').innerText = 'ROI: ' + roi.toFixed(0) + '%';
+      document.getElementById('resultBox').style.display = 'block';
+    }
+  </script>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="margin-top: 4rem;">
+    <div class="container">
+      <p>&copy; 2026 Albatross AI. All rights reserved.</p>
+    </div>
+  </footer>
+
+</body>
+</html>

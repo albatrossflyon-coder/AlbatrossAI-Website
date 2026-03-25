@@ -1,0 +1,130 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prompt Efficiency Scorer — Albatross AI</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tool-container {
+      background: var(--grey-mid);
+      padding: 2.5rem;
+      border-radius: 16px;
+      max-width: 800px;
+      margin: 2rem auto;
+      border: 1px solid var(--grey-light);
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--grey-light);
+      background: var(--grey-dark);
+      color: var(--white);
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      resize: vertical;
+    }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+      display: none;
+    }
+    .score-item {
+      background: var(--grey-dark);
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .score-label { font-size: 0.8rem; opacity: 0.7; }
+    .score-value { font-size: 1.5rem; font-weight: 700; color: var(--blue); }
+    .overall-score { font-size: 3rem; font-weight: 800; color: var(--blue); margin-top: 1rem; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo" style="text-decoration: none;">
+      <img src="assets/images/Albatross AI logo.png" alt="Albatross AI Logo" />
+      <span>Albatross AI</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="tools.html">Back to Tools</a></li>
+    </ul>
+  </nav>
+
+  <section class="container">
+    <div style="text-align: center; margin-top: 4rem;">
+      <h1>Prompt <span class="gradient-text">Efficiency Scorer</span></h1>
+      <p>Benchmark your prompts for clarity and quality.</p>
+    </div>
+
+    <div class="tool-container">
+      <textarea id="promptInput" placeholder="Paste your prompt here..."></textarea>
+      <button class="btn-primary" style="width: 100%;" onclick="scorePrompt()">Analyze Prompt</button>
+
+      <div id="results" style="display: none; text-align: center; margin-top: 2rem;">
+        <p>Overall Efficiency Score:</p>
+        <div class="overall-score" id="overallScore">0/100</div>
+        
+        <div class="score-grid" id="scoreGrid" style="display: grid;">
+          <div class="score-item">
+            <div class="score-label">Clarity</div>
+            <div class="score-value" id="clarityScore">0%</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Context</div>
+            <div class="score-value" id="contextScore">0%</div>
+          </div>
+          <div class="score-item">
+            <div class="score-label">Constraints</div>
+            <div class="score-value" id="constraintsScore">0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    function scorePrompt() {
+      const prompt = document.getElementById('promptInput').value;
+      if (!prompt) return;
+
+      const length = prompt.length;
+      const wordCount = prompt.split(/\s+/).length;
+      
+      // Rough heuristic scoring
+      let clarity = Math.min(100, (wordCount / 50) * 100);
+      let context = prompt.toLowerCase().includes('context') || prompt.toLowerCase().includes('background') ? 90 : 40;
+      let constraints = prompt.toLowerCase().includes('do not') || prompt.toLowerCase().includes('must') || prompt.toLowerCase().includes('should') ? 85 : 30;
+
+      if (length < 20) {
+        clarity = 10;
+        context = 5;
+        constraints = 5;
+      }
+
+      const overall = Math.round((clarity + context + constraints) / 3);
+
+      document.getElementById('overallScore').innerText = overall + '/100';
+      document.getElementById('clarityScore').innerText = Math.round(clarity) + '%';
+      document.getElementById('contextScore').innerText = context + '%';
+      document.getElementById('constraintsScore').innerText = constraints + '%';
+      
+      document.getElementById('results').style.display = 'block';
+    }
+  </script>
+
+  <!-- FOOTER -->
+  <footer class="footer" style="margin-top: 4rem;">
+    <div class="container">
+      <p>&copy; 2026 Albatross AI. All rights reserved.</p>
+    </div>
+  </footer>
+
+</body>
+</html>
