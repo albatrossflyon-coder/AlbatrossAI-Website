@@ -4,7 +4,7 @@
 // Set YOUR_GMX_EMAIL below, then visit formsubmit.co to activate
 // ===========================
 
-const POPUP_EMAIL = 'albatrossflyon@gmx.com'; // GMX confirmed by Chris ✅
+const POPUP_EMAIL = 'albatrossai.online@gmail.com';
 const POPUP_DELAY = 12000; // show after 12 seconds
 const FORM_ACTION = `https://formsubmit.co/${POPUP_EMAIL}`;
 
