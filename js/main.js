@@ -37,7 +37,7 @@ const contactTrigger = document.querySelector('.contact-trigger');
 function openDoors()  { doorsOverlay.classList.add('open'); }
 function closeDoors() { doorsOverlay.classList.remove('open'); }
 
-contactTrigger?.addEventListener('click', openDoors);
+document.querySelectorAll('.contact-trigger').forEach(btn => btn.addEventListener('click', openDoors));
 doorsClose?.addEventListener('click', closeDoors);
 
 // Also trigger from nav "Contact" link
@@ -53,20 +53,6 @@ doorsOverlay?.addEventListener('click', (e) => {
   if (e.target === doorsOverlay) closeDoors();
 });
 
-// Email copy to clipboard
-const emailBtn = document.querySelector('.door-email-btn');
-emailBtn?.addEventListener('click', () => {
-  const email = emailBtn.dataset.email;
-  navigator.clipboard.writeText(email).then(() => {
-    const label = emailBtn.querySelector('.email-label');
-    label.textContent = 'Copied!';
-    emailBtn.style.color = '#00ff99';
-    setTimeout(() => {
-      label.textContent = 'Email';
-      emailBtn.style.color = '';
-    }, 2000);
-  });
-});
 
 // Wallpaper crossfade slideshow
 const slide1 = document.querySelector('.wp-slide-1');

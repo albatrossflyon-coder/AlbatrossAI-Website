@@ -584,6 +584,18 @@ body {
 .door-right .door-link svg { color: #e6edf3; }
 .door-link:hover svg { transform: scale(1.15); }
 
+.door-facebook { transform: translateX(-100%); background: #0d1b3e; border-right: 1px solid var(--grey-light); }
+.doors-overlay.open .door-facebook { transform: translateX(0); transition-delay: 0.02s; }
+.door-facebook .door-link svg { color: #1877f2; }
+
+.door-x     { transform: translateX(-100%); background: #0a0a0a; border-right: 1px solid var(--grey-light); }
+.doors-overlay.open .door-x { transform: translateX(0); transition-delay: 0.05s; }
+.door-x .door-link svg { color: #e7e9ea; }
+
+.door-phone { transform: translateX(100%); background: #0d1117; border-left: 1px solid var(--grey-light); }
+.doors-overlay.open .door-phone { transform: translateX(0); transition-delay: 0.22s; }
+.door-phone .door-link svg { color: #00cc77; }
+
 .door-email-btn {
   background: none;
   border: none;
