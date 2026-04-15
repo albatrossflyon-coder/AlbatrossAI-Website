@@ -2,3 +2,5 @@ agent-library/
 .claude/
 desktop.ini
 *.bak
+.env
+chatbot/.env

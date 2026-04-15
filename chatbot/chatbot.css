@@ -5,7 +5,7 @@
   --aai-bg: #0d1117;
   --aai-surface: #161b22;
   --aai-border: rgba(255,255,255,0.08);
-  --aai-text: #e6edf3;
+  --aai-text: #ffffff;
   --aai-muted: #8b949e;
   --aai-radius: 16px;
   --aai-shadow: 0 16px 48px rgba(0,0,0,0.6);
@@ -58,7 +58,7 @@
   bottom: 28px;
   right: 28px;
   width: 360px;
-  max-height: 560px;
+  max-height: 680px;
   background: var(--aai-bg);
   border: 1px solid var(--aai-border);
   border-radius: var(--aai-radius);
