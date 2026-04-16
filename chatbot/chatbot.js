@@ -7,7 +7,7 @@
   })();
 
   var CLIENT_ID = script.getAttribute('data-client-id') || 'default';
-  var API_BASE  = script.getAttribute('data-api') || 'https://albatrossai.online/api';
+  var API_BASE  = script.getAttribute('data-api') || 'https://igj.gen.mybluehost.me/api';
   var BOT_NAME  = script.getAttribute('data-name') || 'Builder Buddy';
   var BOT_COLOR = script.getAttribute('data-color') || '#00ff88';
 
