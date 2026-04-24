@@ -1,37 +1,71 @@
 """
-Albatross AI — Contractor Chatbot Backend
-FastAPI + Gemini API | Phase 2 — Multi-turn + Material Calculator
+Builder Buddy — Provider-Agnostic Contractor Chatbot
+White-label template | Direct HTTP backend (no heavy SDK dependencies)
+Supports: anthropic, gemini, openai, openrouter — set via .env only
 """
 
 import os
 import json
 import math
 import time
+import sqlite3
 from collections import defaultdict
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from google import genai
-from google.genai import types
+from fastapi.responses import JSONResponse, HTMLResponse
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST", "OPTIONS"],
+    allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# --- Config ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-FREE_QUERY_LIMIT = 50
+# --- White-label config (all via .env) ---
+LLM_PROVIDER       = os.environ.get("LLM_PROVIDER", "anthropic").lower()
+LLM_MODEL          = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
+LLM_API_KEY        = os.environ.get("LLM_API_KEY", "")
+BOT_NAME           = os.environ.get("BOT_NAME", "Builder Buddy")
+FREE_QUERY_LIMIT   = int(os.environ.get("FREE_QUERY_LIMIT", "50"))
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+# --- SQLite lead storage (survives restarts) ---
+DB_PATH = "leads.db"
 
-# --- IP rate tracking ---
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS leads (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            client_id TEXT,
+            name      TEXT,
+            phone     TEXT,
+            project   TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# --- Rate limiting ---
 ip_usage: dict = defaultdict(lambda: {"count": 0, "reset_at": time.time() + 86400})
 
+def check_rate_limit(key: str) -> tuple[bool, int]:
+    now = time.time()
+    record = ip_usage[key]
+    if now > record["reset_at"]:
+        record["count"] = 0
+        record["reset_at"] = now + 86400
+    if record["count"] >= FREE_QUERY_LIMIT:
+        return False, 0
+    return True, FREE_QUERY_LIMIT - record["count"]
+
+# --- System prompt ---
 SYSTEM_PROMPT = """
 You are Builder Buddy — a no-nonsense construction expert embedded on a contractor's website.
 You answer like a seasoned GC who has built thousands of projects. You give REAL answers with REAL numbers.
@@ -69,22 +103,15 @@ ADA RAMP SPECIFICATIONS:
 - Surface: non-slip required
 
 MATERIAL TAKEOFFS — ALWAYS GIVE REAL QUANTITIES:
-When user gives dimensions, calculate and state the actual quantities. Example for a 20×40 deck:
-- Area = 800 SF
-- Posts (4×4 or 6×6): every 6-8 feet = roughly X posts
-- Beams: X pieces of Y size
-- Joists: every 16" OC = X joists at Y length
-- Decking: 800 SF × 2.4 = 1,920 LF of 5/4×6 boards
-- Hardware, fasteners, concrete: estimate from above quantities
+When user gives dimensions, calculate and state the actual quantities.
 
 BUILDING CODES AND PERMITS:
 - State the actual IRC/IBC code section when relevant
 - Permit required for: any deck/platform over 30" high, any structure over 200 SF (most jurisdictions)
-- Always mention when a permit is likely required
 
 COSTS:
 - Give realistic ranges. Labor + materials for a ground-level deck: $25–45/SF. Elevated deck: $45–75/SF.
-- Lumber prices fluctuate — always append the pricing links for current rates.
+- Lumber prices fluctuate — always append pricing links for current rates.
 
 TONE: Direct, knowledgeable, no fluff. Like a trusted GC talking to a homeowner at the job site.
 - For simple questions: 2-4 sentences is fine.
@@ -92,127 +119,92 @@ TONE: Direct, knowledgeable, no fluff. Like a trusted GC talking to a homeowner 
 - Always end with ONE natural follow-up question.
 - If asked something outside construction: "That's outside my wheelhouse — I stick to construction. What's your project?"
 
-MATERIAL CALCULATOR — VERY IMPORTANT:
-When a user provides square footage or dimensions and asks how much material they need, you MUST call the calculate_materials function to get exact quantities. Use it alongside your own calculations.
-
-MATERIAL PRICING RULE — VERY IMPORTANT:
-Whenever the user asks about material costs, prices, or quantities for ANY construction material
-(lumber, framing, tile, roofing shingles, drywall, concrete, fasteners, insulation, flooring, etc.),
-you MUST include live pricing links at the end of your answer in this exact format:
-
+MATERIAL PRICING RULE:
+Whenever the user asks about material costs, always include live pricing links:
 Check current prices:
 • Home Depot: https://www.homedepot.com/s/[SEARCH_TERM]
 • Lowe's: https://www.lowes.com/search?searchTerm=[SEARCH_TERM]
-
-Replace [SEARCH_TERM] with the relevant material (use + for spaces, e.g. 2x4+lumber, ceramic+tile, roofing+shingles).
-Always include both links.
 """
 
 
-# --- Material Calculator Tool ---
-
 def _calculate_materials(material_type: str, area_sqft: float, notes: str = "") -> dict:
-    """Execute the material calculation — called after Gemini requests it."""
     mt = material_type.lower().strip()
     waste = 1.10
-
     if mt == "roofing":
         squares = area_sqft / 100
         bundles = math.ceil(squares * 3 * waste)
-        felt_rolls = math.ceil(squares / 4)
-        return {
-            "squares": round(squares, 1),
-            "shingle_bundles": bundles,
-            "felt_paper_rolls": felt_rolls,
-            "ridge_cap_bundles": math.ceil(squares * 0.1) or 1,
-            "nails_lbs": math.ceil(squares * 2.5),
-            "waste_factor": "10%",
-            "note": "Standard architectural shingles. Adjust for complex geometry."
-        }
+        return {"squares": round(squares, 1), "shingle_bundles": bundles, "felt_paper_rolls": math.ceil(squares / 4), "nails_lbs": math.ceil(squares * 2.5)}
     elif mt == "flooring":
         sqft_needed = math.ceil(area_sqft * waste)
-        return {
-            "sqft_needed": sqft_needed,
-            "boxes_at_20sqft": math.ceil(sqft_needed / 20),
-            "boxes_at_25sqft": math.ceil(sqft_needed / 25),
-            "waste_factor": "10%",
-            "note": "Use 15% waste for diagonal layouts or irregular rooms."
-        }
+        return {"sqft_needed": sqft_needed, "boxes_at_20sqft": math.ceil(sqft_needed / 20), "boxes_at_25sqft": math.ceil(sqft_needed / 25)}
     elif mt == "drywall":
         sheets = math.ceil(area_sqft / 32 * waste)
-        return {
-            "sheets_4x8": sheets,
-            "joint_compound_5gal": math.ceil(sheets / 15),
-            "tape_rolls_500ft": math.ceil(sheets / 20),
-            "screw_boxes_1lb": math.ceil(sheets * 0.1) or 1,
-            "waste_factor": "10%"
-        }
+        return {"sheets_4x8": sheets, "joint_compound_5gal": math.ceil(sheets / 15), "tape_rolls_500ft": math.ceil(sheets / 20)}
     elif mt == "concrete":
-        cubic_ft = area_sqft * (4 / 12)
-        cubic_yards = (cubic_ft / 27) * 1.05
-        return {
-            "cubic_yards": round(cubic_yards, 2),
-            "bags_80lb_if_mixing": math.ceil(cubic_yards * 45),
-            "assumption": "4-inch slab",
-            "note": "For other depths multiply cubic_yards by (actual_inches / 4). Order ready-mix for anything over 1 yard."
-        }
+        cubic_yards = (area_sqft * (4 / 12) / 27) * 1.05
+        return {"cubic_yards": round(cubic_yards, 2), "bags_80lb_if_mixing": math.ceil(cubic_yards * 45)}
     elif mt == "framing":
         perimeter_est = math.sqrt(area_sqft) * 4
         studs = math.ceil((perimeter_est / 1.333) * waste)
-        plate_lf = math.ceil(perimeter_est * 3 * waste)
-        return {
-            "studs_2x4": studs,
-            "plate_linear_feet": plate_lf,
-            "assumption": "8ft walls, 16-inch OC stud spacing",
-            "note": "Rough estimate. Subtract for doors/windows, add for interior walls."
-        }
+        return {"studs_2x4": studs, "plate_linear_feet": math.ceil(perimeter_est * 3 * waste)}
     else:
         return {"error": f"Unknown material type '{material_type}'. Supported: roofing, flooring, drywall, concrete, framing"}
 
 
-CALCULATE_TOOL = types.Tool(function_declarations=[
-    types.FunctionDeclaration(
-        name="calculate_materials",
-        description=(
-            "Calculate exact material quantities for a construction project. "
-            "Call this whenever the user gives square footage and asks how much material they need."
-        ),
-        parameters={
-            "type": "object",
-            "properties": {
-                "material_type": {
-                    "type": "string",
-                    "description": "One of: roofing, flooring, drywall, concrete, framing"
-                },
-                "area_sqft": {
-                    "type": "number",
-                    "description": "Area in square feet"
-                },
-                "notes": {
-                    "type": "string",
-                    "description": "Optional context like roof pitch or slab thickness"
-                }
-            },
-            "required": ["material_type", "area_sqft"]
+async def call_llm(messages: list, system: str) -> str:
+    """Route to the correct provider via direct HTTP. Zero heavy dependencies."""
+
+    if LLM_PROVIDER == "anthropic":
+        payload = {
+            "model": LLM_MODEL,
+            "max_tokens": 1024,
+            "system": system,
+            "messages": messages
         }
-    )
-])
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": LLM_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                json=payload
+            )
+            r.raise_for_status()
+            return r.json()["content"][0]["text"]
 
-GEMINI_CONFIG = types.GenerateContentConfig(
-    system_instruction=SYSTEM_PROMPT,
-    tools=[CALCULATE_TOOL]
-)
+    elif LLM_PROVIDER == "gemini":
+        gemini_messages = []
+        for m in messages:
+            role = "user" if m["role"] == "user" else "model"
+            gemini_messages.append({"role": role, "parts": [{"text": m["content"]}]})
 
+        payload = {
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": gemini_messages,
+            "generationConfig": {"maxOutputTokens": 1024}
+        }
+        model = LLM_MODEL.replace("gemini/", "")
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={LLM_API_KEY}",
+                json=payload
+            )
+            r.raise_for_status()
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"]
 
-def check_rate_limit(ip: str) -> tuple[bool, int]:
-    now = time.time()
-    record = ip_usage[ip]
-    if now > record["reset_at"]:
-        record["count"] = 0
-        record["reset_at"] = now + 86400
-    if record["count"] >= FREE_QUERY_LIMIT:
-        return False, 0
-    return True, FREE_QUERY_LIMIT - record["count"]
+    elif LLM_PROVIDER in ("openai", "openrouter"):
+        base_url = "https://openrouter.ai/api/v1" if LLM_PROVIDER == "openrouter" else "https://api.openai.com/v1"
+        full_messages = [{"role": "system", "content": system}] + messages
+        payload = {"model": LLM_MODEL, "messages": full_messages, "max_tokens": 1024}
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json=payload
+            )
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"]
+
+    else:
+        raise ValueError(f"Unknown provider: {LLM_PROVIDER}. Use anthropic, gemini, openai, or openrouter.")
 
 
 @app.post("/chat")
@@ -221,71 +213,47 @@ async def chat(request: Request):
         body = await request.json()
         message = body.get("message", "").strip()
         client_id = body.get("client_id", "default")
-        history = body.get("history", [])  # list of {role, text}
+        history = body.get("history", [])
 
         if not message:
             return JSONResponse({"error": "empty_message"}, status_code=400)
 
-        ip = request.headers.get("X-Forwarded-For", request.client.host)
-        ip = ip.split(",")[0].strip()
+        ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
         rate_key = f"{client_id}:{ip}"
-
         allowed, remaining = check_rate_limit(rate_key)
+
         if not allowed:
             return JSONResponse({
                 "blocked": True,
-                "message": "You've used your 3 free questions. To keep the conversation going, reach out directly — we'd love to help with your project.",
+                "message": "You've used your free questions. Reach out directly — we'd love to help with your project.",
                 "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
             })
 
         ip_usage[rate_key]["count"] += 1
 
-        # Build multi-turn contents from history (cap at last 8 to save tokens)
-        contents = []
+        messages = []
         for msg in history[-8:]:
-            role = "user" if msg.get("role") == "user" else "model"
+            role = "user" if msg.get("role") == "user" else "assistant"
             text = msg.get("text", "").strip()
             if text:
-                contents.append(types.Content(role=role, parts=[types.Part(text=text)]))
+                messages.append({"role": role, "content": text})
+        messages.append({"role": "user", "content": message})
 
-        # Add current message
-        contents.append(types.Content(role="user", parts=[types.Part(text=message)]))
+        # Material calculator: detect and inject result before LLM call
+        calc_keywords = ["roofing", "flooring", "drywall", "concrete", "framing"]
+        has_sqft = any(w in message.lower() for w in ["sq ft", "sqft", "square feet", "square foot"])
+        has_calc = any(k in message.lower() for k in calc_keywords)
 
-        # First Gemini call
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contents,
-            config=GEMINI_CONFIG
-        )
+        if has_sqft and has_calc:
+            import re
+            nums = re.findall(r'\b(\d+(?:\.\d+)?)\b', message)
+            if nums:
+                area = float(nums[0])
+                mat = next((k for k in calc_keywords if k in message.lower()), "framing")
+                result = _calculate_materials(mat, area)
+                messages[-1]["content"] += f"\n\n[Material calculator result for {area} sqft of {mat}: {json.dumps(result)}]"
 
-        # Handle function calling if triggered
-        candidate = response.candidates[0]
-        if candidate.content.parts and hasattr(candidate.content.parts[0], 'function_call') and candidate.content.parts[0].function_call:
-            fn_call = candidate.content.parts[0].function_call
-            fn_args = {k: v for k, v in fn_call.args.items()} if fn_call.args else {}
-
-            if fn_call.name == "calculate_materials":
-                fn_result = _calculate_materials(**fn_args)
-            else:
-                fn_result = {"error": "unknown function"}
-
-            # Append model turn + function response, then get final answer
-            contents.append(candidate.content)
-            contents.append(types.Content(
-                role="user",
-                parts=[types.Part(function_response=types.FunctionResponse(
-                    name=fn_call.name,
-                    response={"result": fn_result}
-                ))]
-            ))
-
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=contents,
-                config=GEMINI_CONFIG
-            )
-
-        answer = response.text.strip()
+        answer = await call_llm(messages, SYSTEM_PROMPT)
 
         return JSONResponse({
             "blocked": False,
@@ -309,22 +277,13 @@ async def capture_lead(request: Request):
         if not name or not phone:
             return JSONResponse({"error": "name_and_phone_required"}, status_code=400)
 
-        lead = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "client_id": client_id,
-            "name": name,
-            "phone": phone,
-            "project": project
-        }
-
-        leads_file = "leads.json"
-        leads = []
-        if os.path.exists(leads_file):
-            with open(leads_file) as f:
-                leads = json.load(f)
-        leads.append(lead)
-        with open(leads_file, "w") as f:
-            json.dump(leads, f, indent=2)
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            "INSERT INTO leads (timestamp, client_id, name, phone, project) VALUES (?, ?, ?, ?, ?)",
+            (time.strftime("%Y-%m-%d %H:%M:%S"), client_id, name, phone, project)
+        )
+        conn.commit()
+        conn.close()
 
         return JSONResponse({"success": True, "message": "Thanks! We'll be in touch shortly."})
 
@@ -332,6 +291,34 @@ async def capture_lead(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
+@app.get("/leads")
+async def view_leads(request: Request, password: str = ""):
+    if DASHBOARD_PASSWORD and password != DASHBOARD_PASSWORD:
+        return JSONResponse({"error": "unauthorized — add ?password=yourpassword to the URL"}, status_code=401)
+
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute(
+        "SELECT timestamp, client_id, name, phone, project FROM leads ORDER BY id DESC"
+    ).fetchall()
+    conn.close()
+
+    rows_html = "".join(
+        f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4] or '—'}</td></tr>"
+        for r in rows
+    )
+    html = f"""<!DOCTYPE html><html><head><title>{BOT_NAME} — Leads</title>
+<style>body{{font-family:sans-serif;padding:2rem;background:#f9f9f9}}h1{{color:#222}}
+table{{border-collapse:collapse;width:100%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.1)}}
+th,td{{border:1px solid #ddd;padding:10px;text-align:left}}th{{background:#111;color:#fff}}
+tr:nth-child(even){{background:#f5f5f5}}</style></head><body>
+<h1>{BOT_NAME} — Lead Dashboard</h1>
+<p>{len(rows)} total lead{'s' if len(rows)!=1 else ''}</p>
+<table><thead><tr><th>Timestamp</th><th>Client ID</th><th>Name</th><th>Phone</th><th>Project</th></tr></thead>
+<tbody>{rows_html or '<tr><td colspan="5" style="text-align:center;color:#999">No leads yet</td></tr>'}</tbody>
+</table></body></html>"""
+    return HTMLResponse(html)
+
+
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "bot": BOT_NAME, "provider": LLM_PROVIDER, "model": LLM_MODEL}
