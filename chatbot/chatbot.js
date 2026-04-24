@@ -102,10 +102,10 @@
   <h4>&#129302; Builder Buddy</h4>
   <p>Get instant answers about your project — free.</p>
   <ul>
-    <li>Tile, roofing &amp; material estimates</li>
+    <li>Material takeoffs &amp; lumber counts</li>
     <li>Permits, codes &amp; timelines</li>
-    <li>Bid &amp; contract questions</li>
-    <li>Cost ranges for any trade</li>
+    <li>Bid &amp; cost range questions</li>
+    <li>Follow channels → 15 free questions</li>
   </ul>
   <button id="aai-teaser-btn">Ask a Question &rarr;</button>
 </div>
@@ -179,10 +179,11 @@
   var leadConfirm = document.getElementById('aai-lead-confirm');
   var voiceBtn    = document.getElementById('aai-voice-toggle');
 
-  var isOpen    = false;
-  var isLoading = false;
-  var voiceOn   = true; // voice on by default
-  var history   = []; // conversation memory
+  var isOpen       = false;
+  var isLoading    = false;
+  var voiceOn      = true;
+  var history      = [];
+  var socialToken  = localStorage.getItem('aai_social_token') || '';
 
   // --- Voice (browser Speech Synthesis) ---
   function speak(text) {
@@ -265,7 +266,7 @@
     fetch(API_BASE + '/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, client_id: CLIENT_ID, history: history.slice(0, -1) })
+      body: JSON.stringify({ message: text, client_id: CLIENT_ID, history: history.slice(0, -1), social_token: socialToken })
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
@@ -275,7 +276,11 @@
       if (data.blocked) {
         appendMessage(data.message, 'bot');
         speak(data.message);
-        showLeadForm();
+        if (data.cta && data.cta.action === 'social_gate') {
+          showSocialGate();
+        } else {
+          showLeadForm();
+        }
       } else if (data.answer) {
         appendMessage(data.answer, 'bot');
         speak(data.answer);
@@ -372,6 +377,18 @@
   function showLeadForm() {
     inputArea.style.display = 'none';
     leadForm.style.display = 'flex';
+  }
+
+  function showSocialGate() {
+    inputArea.style.display = 'none';
+    var gate = document.createElement('div');
+    gate.id = 'aai-social-gate';
+    gate.style.cssText = 'padding:14px;display:flex;flex-direction:column;gap:10px;border-top:1px solid rgba(255,255,255,0.08);background:#161b22;flex-shrink:0;text-align:center';
+    gate.innerHTML = `
+      <p style="font-size:12px;color:#8b949e;line-height:1.5">Follow our channels and get <strong style="color:#00ff88">15 free questions</strong> — no account needed.</p>
+      <a href="${API_BASE}/access" target="_blank" style="display:block;background:#00ff88;color:#000;text-decoration:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Follow to Unlock 15 Free Questions →</a>
+      <p style="font-size:11px;color:#8b949e">Already followed? <a href="${API_BASE}/access" target="_blank" style="color:#00ff88;text-decoration:underline">Claim your access here</a></p>`;
+    window_.appendChild(gate);
   }
 
 })();

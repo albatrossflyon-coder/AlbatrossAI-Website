@@ -8,6 +8,7 @@ import os
 import json
 import math
 import time
+import uuid
 import sqlite3
 from collections import defaultdict
 import httpx
@@ -25,12 +26,24 @@ app.add_middleware(
 )
 
 # --- White-label config (all via .env) ---
-LLM_PROVIDER       = os.environ.get("LLM_PROVIDER", "anthropic").lower()
-LLM_MODEL          = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
-LLM_API_KEY        = os.environ.get("LLM_API_KEY", "")
-BOT_NAME           = os.environ.get("BOT_NAME", "Builder Buddy")
-FREE_QUERY_LIMIT   = int(os.environ.get("FREE_QUERY_LIMIT", "50"))
-DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
+LLM_PROVIDER        = os.environ.get("LLM_PROVIDER", "anthropic").lower()
+LLM_MODEL           = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
+LLM_API_KEY         = os.environ.get("LLM_API_KEY", "")
+BOT_NAME            = os.environ.get("BOT_NAME", "Builder Buddy")
+FREE_QUERY_LIMIT    = int(os.environ.get("FREE_QUERY_LIMIT", "3"))
+SOCIAL_QUERY_LIMIT  = int(os.environ.get("SOCIAL_QUERY_LIMIT", "15"))
+DASHBOARD_PASSWORD  = os.environ.get("DASHBOARD_PASSWORD", "")
+SITE_URL            = os.environ.get("SITE_URL", "https://albatrossai.online")
+
+# Social channel URLs — set these in .env or Fly.io secrets
+SOCIAL_YT_MAIN  = os.environ.get("SOCIAL_YT_MAIN",  "https://youtube.com/@AlbatrossAI")
+SOCIAL_YT_ARMY  = os.environ.get("SOCIAL_YT_ARMY",  "https://youtube.com/@ClaudeArmy")
+SOCIAL_LINKEDIN = os.environ.get("SOCIAL_LINKEDIN",  "https://linkedin.com/in/chris-brown-albatross")
+SOCIAL_FACEBOOK = os.environ.get("SOCIAL_FACEBOOK",  "https://facebook.com/AlbatrossAI")
+SOCIAL_X        = os.environ.get("SOCIAL_X",         "https://x.com/AlbatrossAI")
+
+# In-memory social token store {token: {"count": int, "issued": float}}
+social_tokens: dict = {}
 
 # --- SQLite lead storage (survives restarts) ---
 DB_PATH = "leads.db"
@@ -218,18 +231,30 @@ async def chat(request: Request):
         if not message:
             return JSONResponse({"error": "empty_message"}, status_code=400)
 
-        ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
-        rate_key = f"{client_id}:{ip}"
-        allowed, remaining = check_rate_limit(rate_key)
-
-        if not allowed:
-            return JSONResponse({
-                "blocked": True,
-                "message": "You've used your free questions. Reach out directly — we'd love to help with your project.",
-                "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
-            })
-
-        ip_usage[rate_key]["count"] += 1
+        # Social token path — bypass IP rate limiting, use higher limit
+        social_token = body.get("social_token", "").strip()
+        if social_token and social_token in social_tokens:
+            record = social_tokens[social_token]
+            if record["count"] >= SOCIAL_QUERY_LIMIT:
+                return JSONResponse({
+                    "blocked": True,
+                    "message": f"You've used all {SOCIAL_QUERY_LIMIT} free questions. Ready to take your project further? Reach out directly.",
+                    "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
+                })
+            remaining = SOCIAL_QUERY_LIMIT - record["count"]
+            record["count"] += 1
+        else:
+            # Standard IP rate limiting
+            ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
+            rate_key = f"{client_id}:{ip}"
+            allowed, remaining = check_rate_limit(rate_key)
+            if not allowed:
+                return JSONResponse({
+                    "blocked": True,
+                    "message": "You've used your 3 free questions. Follow our channels for 15 more — free. Or reach out directly.",
+                    "cta": {"text": "Get 15 Free Questions", "action": "social_gate"}
+                })
+            ip_usage[rate_key]["count"] += 1
 
         messages = []
         for msg in history[-8:]:
@@ -317,6 +342,121 @@ tr:nth-child(even){{background:#f5f5f5}}</style></head><body>
 <tbody>{rows_html or '<tr><td colspan="5" style="text-align:center;color:#999">No leads yet</td></tr>'}</tbody>
 </table></body></html>"""
     return HTMLResponse(html)
+
+
+@app.get("/access")
+async def access_page():
+    channels = [
+        {"id": 1, "platform": "YouTube",  "label": "Albatross AI",  "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
+        {"id": 2, "platform": "YouTube",  "label": "Claude Army",   "action": "Subscribe", "url": SOCIAL_YT_ARMY,  "icon": "▶"},
+        {"id": 3, "platform": "LinkedIn", "label": "Chris Brown",   "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
+        {"id": 4, "platform": "Facebook", "label": "Albatross AI",  "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
+        {"id": 5, "platform": "X",        "label": "@AlbatrossAI",  "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"},
+    ]
+    steps_html = ""
+    for c in channels:
+        steps_html += f"""
+        <div class="step" id="step-{c['id']}">
+          <div class="step-icon">{c['icon']}</div>
+          <div class="step-info">
+            <div class="step-platform">{c['platform']}</div>
+            <div class="step-label">{c['label']}</div>
+          </div>
+          <a href="{c['url']}" target="_blank" rel="noopener"
+             class="follow-btn" onclick="markDone({c['id']})">{c['action']}</a>
+          <div class="done-check" id="done-{c['id']}">✓</div>
+        </div>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Get Free Access — {BOT_NAME}</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}}
+.card{{background:#161b22;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:40px 36px;width:100%;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,0.6)}}
+.avatar{{width:64px;height:64px;background:#00ff88;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;margin:0 auto 20px}}
+h1{{font-size:22px;font-weight:700;text-align:center;margin-bottom:8px}}
+.subtitle{{font-size:14px;color:#8b949e;text-align:center;line-height:1.5;margin-bottom:8px}}
+.badge{{display:inline-block;background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);color:#00ff88;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin:0 auto 28px;display:block;width:fit-content;text-align:center}}
+.steps{{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}}
+.step{{display:flex;align-items:center;gap:12px;background:#0d1117;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;transition:border-color .2s}}
+.step.done{{border-color:rgba(0,255,136,0.4)}}
+.step-icon{{width:36px;height:36px;background:rgba(255,255,255,0.06);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}}
+.step-info{{flex:1}}
+.step-platform{{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}}
+.step-label{{font-size:13.5px;font-weight:600;color:#e6edf3;margin-top:1px}}
+.follow-btn{{background:#00ff88;color:#000;border:none;border-radius:8px;padding:7px 16px;font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:none;transition:opacity .15s;white-space:nowrap}}
+.follow-btn:hover{{opacity:.85}}
+.done-check{{width:24px;height:24px;background:rgba(0,255,136,0.15);border:1px solid #00ff88;border-radius:50%;display:none;align-items:center;justify-content:center;color:#00ff88;font-size:13px;font-weight:700;flex-shrink:0}}
+.step.done .done-check{{display:flex}}
+#claim-btn{{width:100%;background:#00ff88;color:#000;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .15s}}
+#claim-btn:disabled{{opacity:.3;cursor:not-allowed}}
+#claim-btn:not(:disabled):hover{{opacity:.9;transform:scale(1.01)}}
+.note{{font-size:11.5px;color:#8b949e;text-align:center;margin-top:12px;line-height:1.5}}
+.success{{text-align:center;padding:20px 0}}
+.success-icon{{font-size:48px;margin-bottom:16px}}
+.success h2{{font-size:20px;font-weight:700;margin-bottom:8px}}
+.success p{{font-size:14px;color:#8b949e;margin-bottom:24px;line-height:1.5}}
+.go-btn{{display:inline-block;background:#00ff88;color:#000;text-decoration:none;border-radius:12px;padding:12px 28px;font-size:14px;font-weight:700;transition:opacity .15s}}
+.go-btn:hover{{opacity:.9}}
+</style>
+</head>
+<body>
+<div class="card" id="main-card">
+  <div class="avatar">AI</div>
+  <h1>Get Free Access to {BOT_NAME}</h1>
+  <p class="subtitle">Follow all 5 channels — takes 60 seconds.<br>Then claim your <strong style="color:#00ff88">{SOCIAL_QUERY_LIMIT} free questions</strong>.</p>
+  <div class="badge">🔒 Follow to unlock → 🔓 {SOCIAL_QUERY_LIMIT} free questions</div>
+  <div class="steps">{steps_html}</div>
+  <button id="claim-btn" disabled onclick="claimAccess()">Claim Free Access →</button>
+  <p class="note">No account needed. No credit card. Just follow and go.</p>
+</div>
+<script>
+var done = {{}};
+var total = {len(channels)};
+function markDone(n) {{
+  setTimeout(function() {{
+    done[n] = true;
+    document.getElementById('step-' + n).classList.add('done');
+    if (Object.keys(done).length >= total) {{
+      document.getElementById('claim-btn').disabled = false;
+    }}
+  }}, 800);
+}}
+async function claimAccess() {{
+  var btn = document.getElementById('claim-btn');
+  btn.textContent = 'Claiming...';
+  btn.disabled = true;
+  try {{
+    var r = await fetch('/claim', {{method:'POST',headers:{{'Content-Type':'application/json'}}}});
+    var data = await r.json();
+    localStorage.setItem('aai_social_token', data.token);
+    document.getElementById('main-card').innerHTML = `
+      <div class="success">
+        <div class="success-icon">✅</div>
+        <h2>You're in!</h2>
+        <p>You now have <strong style="color:#00ff88">{SOCIAL_QUERY_LIMIT} free questions</strong> with {BOT_NAME}.<br>Head back to the site and start asking.</p>
+        <a href="{SITE_URL}" class="go-btn">Go Ask Builder Buddy →</a>
+      </div>`;
+  }} catch(e) {{
+    btn.textContent = 'Claim Free Access →';
+    btn.disabled = false;
+  }}
+}}
+</script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
+
+@app.post("/claim")
+async def claim_access():
+    token = str(uuid.uuid4())
+    social_tokens[token] = {"count": 0, "issued": time.time()}
+    return JSONResponse({"token": token})
 
 
 @app.get("/health")
