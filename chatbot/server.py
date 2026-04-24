@@ -36,11 +36,12 @@ DASHBOARD_PASSWORD  = os.environ.get("DASHBOARD_PASSWORD", "")
 SITE_URL            = os.environ.get("SITE_URL", "https://albatrossai.online")
 
 # Social channel URLs — set these in .env or Fly.io secrets
-SOCIAL_YT_MAIN  = os.environ.get("SOCIAL_YT_MAIN",  "https://youtube.com/@AlbatrossAI")
-SOCIAL_YT_ARMY  = os.environ.get("SOCIAL_YT_ARMY",  "https://youtube.com/@ClaudeArmy")
-SOCIAL_LINKEDIN = os.environ.get("SOCIAL_LINKEDIN",  "https://linkedin.com/in/chris-brown-albatross")
-SOCIAL_FACEBOOK = os.environ.get("SOCIAL_FACEBOOK",  "https://facebook.com/AlbatrossAI")
-SOCIAL_X        = os.environ.get("SOCIAL_X",         "https://x.com/AlbatrossAI")
+SOCIAL_YT_MAIN   = os.environ.get("SOCIAL_YT_MAIN",   "https://youtube.com/@albatrossagent")
+SOCIAL_YT_ARMY   = os.environ.get("SOCIAL_YT_ARMY",   "https://youtube.com/@claudecodearmy")
+SOCIAL_LINKEDIN  = os.environ.get("SOCIAL_LINKEDIN",  "https://www.linkedin.com/in/chris-brown-2327a73b1/")
+SOCIAL_FACEBOOK  = os.environ.get("SOCIAL_FACEBOOK",  "https://www.facebook.com/profile.php?id=61577507884349")
+SOCIAL_FB_CHRIS  = os.environ.get("SOCIAL_FB_CHRIS",  "https://www.facebook.com/profile.php?id=100042260839653")
+SOCIAL_X         = os.environ.get("SOCIAL_X",         "https://x.com/chrisbrown75054")
 
 # In-memory social token store {token: {"count": int, "issued": float}}
 social_tokens: dict = {}
@@ -347,11 +348,12 @@ tr:nth-child(even){{background:#f5f5f5}}</style></head><body>
 @app.get("/access")
 async def access_page():
     channels = [
-        {"id": 1, "platform": "YouTube",  "label": "Albatross AI",  "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
-        {"id": 2, "platform": "YouTube",  "label": "Claude Army",   "action": "Subscribe", "url": SOCIAL_YT_ARMY,  "icon": "▶"},
-        {"id": 3, "platform": "LinkedIn", "label": "Chris Brown",   "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
-        {"id": 4, "platform": "Facebook", "label": "Albatross AI",  "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
-        {"id": 5, "platform": "X",        "label": "@AlbatrossAI",  "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"},
+        {"id": 1, "platform": "YouTube",  "label": "Albatross AI",       "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
+        {"id": 2, "platform": "YouTube",  "label": "Claude Army",        "action": "Subscribe", "url": SOCIAL_YT_ARMY,  "icon": "▶"},
+        {"id": 3, "platform": "LinkedIn", "label": "Chris Brown",        "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
+        {"id": 4, "platform": "Facebook", "label": "Albatross AI Page",  "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
+        {"id": 5, "platform": "Facebook", "label": "Chris Brown",        "action": "Friend",    "url": SOCIAL_FB_CHRIS, "icon": "f"},
+        {"id": 6, "platform": "X",        "label": "@chrisbrown75054",   "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"},
     ]
     steps_html = ""
     for c in channels:
