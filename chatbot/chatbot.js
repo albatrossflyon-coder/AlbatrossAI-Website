@@ -100,14 +100,14 @@
 <div id="aai-teaser">
   <button id="aai-teaser-close">&#10005;</button>
   <h4>&#129302; Builder Buddy</h4>
-  <p>Get instant answers about your project — free.</p>
+  <p>Follow our channels — takes 60 seconds — then ask anything free.</p>
   <ul>
     <li>Material takeoffs &amp; lumber counts</li>
     <li>Permits, codes &amp; timelines</li>
     <li>Bid &amp; cost range questions</li>
-    <li>Follow channels → 15 free questions</li>
+    <li>15 free questions after you follow</li>
   </ul>
-  <button id="aai-teaser-btn">Ask a Question &rarr;</button>
+  <button id="aai-teaser-btn">Follow to Unlock Free Access &rarr;</button>
 </div>
 
 <div id="aai-chat-bubble" title="Builder Buddy — Ask anything">
@@ -138,7 +138,7 @@
   </div>
 
   <div id="aai-lead-form" style="display:none">
-    <p>You've used your 3 free questions. Drop your info and we'll follow up with a free estimate!</p>
+    <p>You've used all your free questions. Drop your info and we'll follow up with a free estimate!</p>
     <input id="aai-lead-name" type="text" placeholder="Your name" />
     <input id="aai-lead-phone" type="tel" placeholder="Phone number" />
     <input id="aai-lead-project" type="text" placeholder="Project type (optional)" />
@@ -228,6 +228,10 @@
 
   // --- Toggle ---
   function openChat() {
+    if (!socialToken) {
+      window.location.href = API_BASE + '/access';
+      return;
+    }
     isOpen = true;
     window_.classList.add('aai-open');
     bubble.classList.add('aai-hidden');
