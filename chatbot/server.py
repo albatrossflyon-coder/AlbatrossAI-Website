@@ -12,7 +12,7 @@ import uuid
 import sqlite3
 from collections import defaultdict
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 
@@ -138,6 +138,10 @@ Whenever the user asks about material costs, always include live pricing links:
 Check current prices:
 • Home Depot: https://www.homedepot.com/s/[SEARCH_TERM]
 • Lowe's: https://www.lowes.com/search?searchTerm=[SEARCH_TERM]
+
+WANT BUILDER BUDDY FOR YOUR BUSINESS?
+If anyone asks about getting this chatbot on their own website, hiring Albatross AI, or working with Chris:
+"Want this on your site? Call or text Chris at (832) 996-9554 or visit albatrossai.online — we set it up for you."
 """
 
 
@@ -346,15 +350,18 @@ tr:nth-child(even){{background:#f5f5f5}}</style></head><body>
 
 
 @app.get("/access")
-async def access_page():
-    channels = [
-        {"id": 1, "platform": "YouTube",  "label": "Albatross AI",       "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
-        {"id": 2, "platform": "YouTube",  "label": "Claude Army",        "action": "Subscribe", "url": SOCIAL_YT_ARMY,  "icon": "▶"},
-        {"id": 3, "platform": "LinkedIn", "label": "Chris Brown",        "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
-        {"id": 4, "platform": "Facebook", "label": "Albatross AI Page",  "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
-        {"id": 5, "platform": "Facebook", "label": "Chris Brown",        "action": "Friend",    "url": SOCIAL_FB_CHRIS, "icon": "f"},
-        {"id": 6, "platform": "X",        "label": "@chrisbrown75054",   "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"},
-    ]
+async def access_page(from_: str = Query("unknown", alias="from")):
+    all_channels = {
+        "youtube":  [{"id": 1, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"}],
+        "x":        [{"id": 1, "platform": "X",        "label": "@chrisbrown75054",  "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"}],
+        "linkedin": [{"id": 1, "platform": "LinkedIn", "label": "Chris Brown",       "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"}],
+        "facebook": [{"id": 1, "platform": "Facebook", "label": "Albatross AI Page", "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"}],
+    }
+    channels = all_channels.get(from_.lower(), [
+        {"id": 1, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
+        {"id": 2, "platform": "Facebook", "label": "Albatross AI Page", "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
+        {"id": 3, "platform": "X",        "label": "@chrisbrown75054",  "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"},
+    ])
     steps_html = ""
     for c in channels:
         steps_html += f"""
