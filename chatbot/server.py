@@ -31,7 +31,7 @@ LLM_MODEL           = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
 LLM_API_KEY         = os.environ.get("LLM_API_KEY", "")
 BOT_NAME            = os.environ.get("BOT_NAME", "Builder Buddy")
 FREE_QUERY_LIMIT    = int(os.environ.get("FREE_QUERY_LIMIT", "0"))
-SOCIAL_QUERY_LIMIT  = int(os.environ.get("SOCIAL_QUERY_LIMIT", "15"))
+SOCIAL_QUERY_LIMIT  = int(os.environ.get("SOCIAL_QUERY_LIMIT", "3"))
 DASHBOARD_PASSWORD  = os.environ.get("DASHBOARD_PASSWORD", "")
 SITE_URL            = os.environ.get("SITE_URL", "https://albatrossai.online")
 
@@ -273,8 +273,8 @@ async def chat(request: Request):
             if not allowed:
                 return JSONResponse({
                     "blocked": True,
-                    "message": "You've used your 3 free questions. Follow our channels for 15 more — free. Or reach out directly.",
-                    "cta": {"text": "Get 15 Free Questions", "action": "social_gate"}
+                    "message": f"You've used your free questions. Follow our channels for {SOCIAL_QUERY_LIMIT} more — free. Or reach out directly.",
+                    "cta": {"text": f"Get {SOCIAL_QUERY_LIMIT} Free Questions", "action": "social_gate"}
                 })
             ip_usage[rate_key]["count"] += 1
 
