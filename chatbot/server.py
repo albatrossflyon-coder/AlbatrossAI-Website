@@ -43,10 +43,7 @@ SOCIAL_FACEBOOK  = os.environ.get("SOCIAL_FACEBOOK",  "https://www.facebook.com/
 SOCIAL_FB_CHRIS  = os.environ.get("SOCIAL_FB_CHRIS",  "https://www.facebook.com/profile.php?id=100042260839653")
 SOCIAL_X         = os.environ.get("SOCIAL_X",         "https://x.com/chrisbrown75054")
 
-# In-memory social token store {token: {"count": int, "issued": float}}
-social_tokens: dict = {}
-
-# --- SQLite lead storage (survives restarts) ---
+# --- SQLite storage (leads + social auth — both survive restarts) ---
 DB_PATH = "leads.db"
 
 def init_db():
@@ -59,6 +56,13 @@ def init_db():
             name      TEXT,
             phone     TEXT,
             project   TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS social_auth (
+            token  TEXT PRIMARY KEY,
+            count  INTEGER NOT NULL DEFAULT 0,
+            issued REAL NOT NULL
         )
     """)
     conn.commit()
@@ -238,17 +242,30 @@ async def chat(request: Request):
 
         # Social token path — bypass IP rate limiting, use higher limit
         social_token = body.get("social_token", "").strip()
-        if social_token and social_token in social_tokens:
-            record = social_tokens[social_token]
-            if record["count"] >= SOCIAL_QUERY_LIMIT:
-                return JSONResponse({
-                    "blocked": True,
-                    "message": f"You've used all {SOCIAL_QUERY_LIMIT} free questions. Ready to take your project further? Reach out directly.",
-                    "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
-                })
-            remaining = SOCIAL_QUERY_LIMIT - record["count"]
-            record["count"] += 1
-        else:
+        use_social = False
+        if social_token:
+            conn = sqlite3.connect(DB_PATH)
+            row = conn.execute(
+                "SELECT count FROM social_auth WHERE token = ?", (social_token,)
+            ).fetchone()
+            if row is not None:
+                count = row[0]
+                if count >= SOCIAL_QUERY_LIMIT:
+                    conn.close()
+                    return JSONResponse({
+                        "blocked": True,
+                        "message": f"You've used all {SOCIAL_QUERY_LIMIT} free questions. Ready to take your project further? Reach out directly.",
+                        "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
+                    })
+                remaining = SOCIAL_QUERY_LIMIT - count
+                conn.execute(
+                    "UPDATE social_auth SET count = count + 1 WHERE token = ?", (social_token,)
+                )
+                conn.commit()
+                use_social = True
+            conn.close()
+
+        if not use_social:
             # Standard IP rate limiting
             ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
             rate_key = f"{client_id}:{ip}"
@@ -464,7 +481,13 @@ async function claimAccess() {{
 @app.post("/claim")
 async def claim_access():
     token = str(uuid.uuid4())
-    social_tokens[token] = {"count": 0, "issued": time.time()}
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "INSERT INTO social_auth (token, count, issued) VALUES (?, 0, ?)",
+        (token, time.time())
+    )
+    conn.commit()
+    conn.close()
     return JSONResponse({"token": token})
 
 
