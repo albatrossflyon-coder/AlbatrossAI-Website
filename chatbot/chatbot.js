@@ -183,7 +183,13 @@
   var isLoading    = false;
   var voiceOn      = true;
   var history      = [];
-  var socialToken  = localStorage.getItem('aai_social_token') || '';
+  // Capture token from URL redirect (cross-domain localStorage workaround)
+  var urlToken = new URLSearchParams(window.location.search).get('aai_token');
+  if (urlToken) {
+    localStorage.setItem('aai_social_token', urlToken);
+    history.replaceState({}, '', window.location.pathname);
+  }
+  var socialToken = localStorage.getItem('aai_social_token') || '';
 
   // --- Voice (browser Speech Synthesis) ---
   function speak(text) {
@@ -229,7 +235,13 @@
   // --- Toggle ---
   function openChat() {
     if (!socialToken) {
-      window.location.href = API_BASE + '/access';
+      var ref = document.referrer || '';
+      var from = 'unknown';
+      if (/facebook\.com/i.test(ref))             from = 'facebook';
+      else if (/twitter\.com|t\.co|x\.com/i.test(ref)) from = 'x';
+      else if (/linkedin\.com/i.test(ref))         from = 'linkedin';
+      else if (/youtube\.com/i.test(ref))          from = 'youtube';
+      window.location.href = API_BASE + '/access?from=' + from;
       return;
     }
     isOpen = true;

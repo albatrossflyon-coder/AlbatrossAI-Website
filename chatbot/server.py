@@ -459,13 +459,12 @@ async function claimAccess() {{
   try {{
     var r = await fetch('/claim', {{method:'POST',headers:{{'Content-Type':'application/json'}}}});
     var data = await r.json();
-    localStorage.setItem('aai_social_token', data.token);
     document.getElementById('main-card').innerHTML = `
       <div class="success">
         <div class="success-icon">✅</div>
         <h2>You're in!</h2>
         <p>You now have <strong style="color:#00ff88">{SOCIAL_QUERY_LIMIT} free questions</strong> with {BOT_NAME}.<br>Head back to the site and start asking.</p>
-        <a href="{SITE_URL}" class="go-btn">Go Ask Builder Buddy →</a>
+        <a href="{SITE_URL}?aai_token=${{data.token}}" class="go-btn">Go Ask Builder Buddy →</a>
       </div>`;
   }} catch(e) {{
     btn.textContent = 'Claim Free Access →';
