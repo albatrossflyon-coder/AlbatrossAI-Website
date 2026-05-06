@@ -105,7 +105,7 @@
     <li>Material takeoffs &amp; lumber counts</li>
     <li>Permits, codes &amp; timelines</li>
     <li>Bid &amp; cost range questions</li>
-    <li>15 free questions after you follow</li>
+    <li>5 free questions after you follow</li>
   </ul>
   <button id="aai-teaser-btn">Follow to Unlock Free Access &rarr;</button>
 </div>
@@ -187,7 +187,7 @@
   var urlToken = new URLSearchParams(window.location.search).get('aai_token');
   if (urlToken) {
     localStorage.setItem('aai_social_token', urlToken);
-    history.replaceState({}, '', window.location.pathname);
+    window.history.replaceState({}, '', window.location.pathname);
   }
   var socialToken = localStorage.getItem('aai_social_token') || '';
 
@@ -401,8 +401,8 @@
     gate.id = 'aai-social-gate';
     gate.style.cssText = 'padding:14px;display:flex;flex-direction:column;gap:10px;border-top:1px solid rgba(255,255,255,0.08);background:#161b22;flex-shrink:0;text-align:center';
     gate.innerHTML = `
-      <p style="font-size:12px;color:#8b949e;line-height:1.5">Follow our channels and get <strong style="color:#00ff88">15 free questions</strong> — no account needed.</p>
-      <a href="${API_BASE}/access" target="_blank" style="display:block;background:#00ff88;color:#000;text-decoration:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Follow to Unlock 15 Free Questions →</a>
+      <p style="font-size:12px;color:#8b949e;line-height:1.5">Follow our channels and get <strong style="color:#00ff88">5 free questions</strong> — no account needed.</p>
+      <a href="${API_BASE}/access" target="_blank" style="display:block;background:#00ff88;color:#000;text-decoration:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">Follow to Unlock 5 Free Questions →</a>
       <p style="font-size:11px;color:#8b949e">Already followed? <a href="${API_BASE}/access" target="_blank" style="color:#00ff88;text-decoration:underline">Claim your access here</a></p>`;
     window_.appendChild(gate);
   }

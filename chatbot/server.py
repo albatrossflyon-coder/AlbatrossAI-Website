@@ -31,7 +31,7 @@ LLM_MODEL           = os.environ.get("LLM_MODEL", "claude-haiku-4-5-20251001")
 LLM_API_KEY         = os.environ.get("LLM_API_KEY", "")
 BOT_NAME            = os.environ.get("BOT_NAME", "Builder Buddy")
 FREE_QUERY_LIMIT    = int(os.environ.get("FREE_QUERY_LIMIT", "0"))
-SOCIAL_QUERY_LIMIT  = int(os.environ.get("SOCIAL_QUERY_LIMIT", "3"))
+SOCIAL_QUERY_LIMIT  = int(os.environ.get("SOCIAL_QUERY_LIMIT", "5"))
 DASHBOARD_PASSWORD  = os.environ.get("DASHBOARD_PASSWORD", "")
 SITE_URL            = os.environ.get("SITE_URL", "https://albatrossai.online")
 
@@ -376,8 +376,8 @@ async def access_page(from_: str = Query("unknown", alias="from")):
     }
     channels = all_channels.get(from_.lower(), [
         {"id": 1, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
-        {"id": 2, "platform": "Facebook", "label": "Albatross AI Page", "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
-        {"id": 3, "platform": "X",        "label": "@chrisbrown75054",  "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"},
+        {"id": 2, "platform": "LinkedIn", "label": "Chris Brown",       "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
+        {"id": 3, "platform": "Facebook", "label": "Albatross AI Page", "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
     ])
     steps_html = ""
     for c in channels:
@@ -434,7 +434,7 @@ h1{{font-size:22px;font-weight:700;text-align:center;margin-bottom:8px}}
 <div class="card" id="main-card">
   <div class="avatar">AI</div>
   <h1>Get Free Access to {BOT_NAME}</h1>
-  <p class="subtitle">Follow all 5 channels — takes 60 seconds.<br>Then claim your <strong style="color:#00ff88">{SOCIAL_QUERY_LIMIT} free questions</strong>.</p>
+  <p class="subtitle">Follow all {len(channels)} channels — takes 60 seconds.<br>Then claim your <strong style="color:#00ff88">{SOCIAL_QUERY_LIMIT} free questions</strong>.</p>
   <div class="badge">🔒 Follow to unlock → 🔓 {SOCIAL_QUERY_LIMIT} free questions</div>
   <div class="steps">{steps_html}</div>
   <button id="claim-btn" disabled onclick="claimAccess()">Claim Free Access →</button>
