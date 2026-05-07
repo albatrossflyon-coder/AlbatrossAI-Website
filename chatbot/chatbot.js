@@ -195,6 +195,14 @@
   var AAI_XI_KEY  = 'sk_28917f8a96f3bd8f758e9bff357e1f0479c69cabbccc6e70';
   var AAI_VOICE   = '86ZLAUcyPNBrbdJKn3u6';
   var aaiAudio    = null;
+  // Silent 1-frame WAV — played on first user gesture to unlock browser autoplay policy
+  var aaiUnlockAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+  var aaiUnlocked = false;
+  function unlockAudio() {
+    if (aaiUnlocked) return;
+    aaiUnlocked = true;
+    aaiUnlockAudio.play().catch(function(){});
+  }
 
   function speak(text) {
     if (!voiceOn) return;
@@ -254,6 +262,7 @@
       window.location.href = API_BASE + '/access?from=' + from;
       return;
     }
+    unlockAudio();
     isOpen = true;
     window_.classList.add('aai-open');
     bubble.classList.add('aai-hidden');
@@ -261,7 +270,9 @@
     teaser.classList.add('aai-hidden');
     setTimeout(function () { input.focus(); }, 200);
     // Greet with voice on first open
-    speak('Hey! I\'m Builder Buddy, your construction assistant. Ask me anything about bids, permits, costs, or material estimates. What\'s your project about?');
+    setTimeout(function() {
+      speak('Hey! I\'m Builder Buddy, your construction assistant. Ask me anything about bids, permits, costs, or material estimates. What\'s your project about?');
+    }, 300);
   }
 
   function closeChat() {
@@ -269,7 +280,7 @@
     window_.classList.remove('aai-open');
     bubble.classList.remove('aai-hidden');
     bubbleLabel.classList.remove('aai-hidden');
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    if (aaiAudio) { aaiAudio.pause(); aaiAudio = null; }
   }
 
   bubble.addEventListener('click', openChat);
