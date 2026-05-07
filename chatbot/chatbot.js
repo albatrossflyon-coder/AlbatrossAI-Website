@@ -184,9 +184,11 @@
   var voiceOn      = true;
   var history      = [];
   // Capture token from URL redirect (cross-domain localStorage workaround)
-  var urlToken = new URLSearchParams(window.location.search).get('aai_token');
-  if (urlToken) {
-    localStorage.setItem('aai_social_token', urlToken);
+  var params = new URLSearchParams(window.location.search);
+  var urlToken = params.get('aai_token');
+  var adminToken = params.get('aai_admin');
+  if (urlToken || adminToken) {
+    localStorage.setItem('aai_social_token', adminToken || urlToken);
     window.history.replaceState({}, '', window.location.pathname);
   }
   var socialToken = localStorage.getItem('aai_social_token') || '';

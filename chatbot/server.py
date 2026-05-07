@@ -33,6 +33,7 @@ BOT_NAME            = os.environ.get("BOT_NAME", "Builder Buddy")
 FREE_QUERY_LIMIT    = int(os.environ.get("FREE_QUERY_LIMIT", "0"))
 SOCIAL_QUERY_LIMIT  = int(os.environ.get("SOCIAL_QUERY_LIMIT", "5"))
 DASHBOARD_PASSWORD  = os.environ.get("DASHBOARD_PASSWORD", "")
+ADMIN_TOKEN         = os.environ.get("ADMIN_TOKEN", "")
 SITE_URL            = os.environ.get("SITE_URL", "https://albatrossai.online")
 
 # Social channel URLs — set these in .env or Fly.io secrets
@@ -130,6 +131,8 @@ BUILDING CODES AND PERMITS:
 COSTS:
 - Give realistic ranges. Labor + materials for a ground-level deck: $25–45/SF. Elevated deck: $45–75/SF.
 - Lumber prices fluctuate — always append pricing links for current rates.
+
+VOICE: This chatbot has a built-in voice feature. If someone asks you to speak, read aloud, or says they can't see — tell them to click the speaker icon (🔊) in the top-right corner of the chat window to hear responses spoken aloud. Do NOT tell them to use Windows Narrator, VoiceOver, or other device tools. The voice button is right here in the chat.
 
 TONE: Direct, knowledgeable, no fluff. Like a trusted GC talking to a homeowner at the job site.
 - For simple questions: 2-4 sentences is fine.
@@ -243,27 +246,32 @@ async def chat(request: Request):
         # Social token path — bypass IP rate limiting, use higher limit
         social_token = body.get("social_token", "").strip()
         use_social = False
+        remaining = 9999
         if social_token:
-            conn = sqlite3.connect(DB_PATH)
-            row = conn.execute(
-                "SELECT count FROM social_auth WHERE token = ?", (social_token,)
-            ).fetchone()
-            if row is not None:
-                count = row[0]
-                if count >= SOCIAL_QUERY_LIMIT:
-                    conn.close()
-                    return JSONResponse({
-                        "blocked": True,
-                        "message": f"You've used all {SOCIAL_QUERY_LIMIT} free questions. Ready to take your project further? Reach out directly.",
-                        "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
-                    })
-                remaining = SOCIAL_QUERY_LIMIT - count
-                conn.execute(
-                    "UPDATE social_auth SET count = count + 1 WHERE token = ?", (social_token,)
-                )
-                conn.commit()
+            # Admin bypass — unlimited queries, no counting
+            if ADMIN_TOKEN and social_token == ADMIN_TOKEN:
                 use_social = True
-            conn.close()
+            else:
+                conn = sqlite3.connect(DB_PATH)
+                row = conn.execute(
+                    "SELECT count FROM social_auth WHERE token = ?", (social_token,)
+                ).fetchone()
+                if row is not None:
+                    count = row[0]
+                    if count >= SOCIAL_QUERY_LIMIT:
+                        conn.close()
+                        return JSONResponse({
+                            "blocked": True,
+                            "message": f"You've used all {SOCIAL_QUERY_LIMIT} free questions. Ready to take your project further? Reach out directly.",
+                            "cta": {"text": "Get a Free Estimate", "action": "lead_capture"}
+                        })
+                    remaining = SOCIAL_QUERY_LIMIT - count
+                    conn.execute(
+                        "UPDATE social_auth SET count = count + 1 WHERE token = ?", (social_token,)
+                    )
+                    conn.commit()
+                    use_social = True
+                conn.close()
 
         if not use_social:
             # Standard IP rate limiting
