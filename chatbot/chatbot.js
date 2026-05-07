@@ -191,21 +191,27 @@
   }
   var socialToken = localStorage.getItem('aai_social_token') || '';
 
-  // --- Voice (browser Speech Synthesis) ---
+  // --- Voice (ElevenLabs TTS) ---
+  var AAI_XI_KEY  = 'sk_28917f8a96f3bd8f758e9bff357e1f0479c69cabbccc6e70';
+  var AAI_VOICE   = '86ZLAUcyPNBrbdJKn3u6';
+  var aaiAudio    = null;
+
   function speak(text) {
-    if (!voiceOn || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    var clean = text.replace(/\*\*/g, '').replace(/[#*_`]/g, '');
-    var utt = new SpeechSynthesisUtterance(clean);
-    utt.rate = 1.05;
-    utt.pitch = 1;
-    // Pick a natural voice if available
-    var voices = window.speechSynthesis.getVoices();
-    var preferred = voices.find(function(v) {
-      return /Google US English|Samantha|Alex|Karen/.test(v.name);
-    });
-    if (preferred) utt.voice = preferred;
-    window.speechSynthesis.speak(utt);
+    if (!voiceOn) return;
+    var clean = text.replace(/\*\*/g, '').replace(/[#*_`]/g, '').slice(0, 500);
+    if (aaiAudio) { aaiAudio.pause(); aaiAudio = null; }
+    fetch('https://api.elevenlabs.io/v1/text-to-speech/' + AAI_VOICE + '/stream', {
+      method: 'POST',
+      headers: { 'xi-api-key': AAI_XI_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+      body: JSON.stringify({ text: clean, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
+    })
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      var url = URL.createObjectURL(blob);
+      aaiAudio = new Audio(url);
+      aaiAudio.play();
+    })
+    .catch(function() {});
   }
 
   voiceBtn.classList.add('aai-on');
@@ -214,7 +220,7 @@
     voiceBtn.classList.toggle('aai-on', voiceOn);
     voiceBtn.title = voiceOn ? 'Mute voice' : 'Unmute voice';
     voiceBtn.textContent = voiceOn ? '🔊' : '🔇';
-    if (!voiceOn) window.speechSynthesis && window.speechSynthesis.cancel();
+    if (!voiceOn && aaiAudio) { aaiAudio.pause(); aaiAudio = null; }
   });
 
   // --- Teaser auto-show after 3s ---
