@@ -205,13 +205,17 @@
       headers: { 'xi-api-key': AAI_XI_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
       body: JSON.stringify({ text: clean, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
     })
-    .then(function(r) { return r.blob(); })
+    .then(function(r) {
+      if (!r.ok) { r.text().then(function(t){ console.error('[AAI voice] ElevenLabs error:', r.status, t); }); return null; }
+      return r.blob();
+    })
     .then(function(blob) {
+      if (!blob) return;
       var url = URL.createObjectURL(blob);
       aaiAudio = new Audio(url);
-      aaiAudio.play();
+      aaiAudio.play().catch(function(e){ console.error('[AAI voice] play() blocked:', e); });
     })
-    .catch(function() {});
+    .catch(function(e){ console.error('[AAI voice] fetch failed:', e); });
   }
 
   voiceBtn.classList.add('aai-on');
