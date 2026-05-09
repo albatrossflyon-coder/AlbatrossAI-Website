@@ -194,6 +194,7 @@
   var socialToken = localStorage.getItem('aai_social_token') || '';
 
   // --- Voice (Web Speech API) ---
+  function unlockAudio() {} // no-op — kept for call compatibility
   function speak(text) {
     if (!voiceOn) return;
     if (!window.speechSynthesis) return;
