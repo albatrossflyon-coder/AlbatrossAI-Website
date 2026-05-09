@@ -193,11 +193,8 @@
   }
   var socialToken = localStorage.getItem('aai_social_token') || '';
 
-  // --- Voice (ElevenLabs TTS) ---
-  var AAI_XI_KEY  = 'sk_28917f8a96f3bd8f758e9bff357e1f0479c69cabbccc6e70';
-  var AAI_VOICE   = '86ZLAUcyPNBrbdJKn3u6';
+  // --- Voice (ElevenLabs TTS via server proxy) ---
   var aaiAudio    = null;
-  // Silent 1-frame WAV — played on first user gesture to unlock browser autoplay policy
   var aaiUnlockAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
   var aaiUnlocked = false;
   function unlockAudio() {
@@ -210,13 +207,13 @@
     if (!voiceOn) return;
     var clean = text.replace(/\*\*/g, '').replace(/[#*_`]/g, '').slice(0, 500);
     if (aaiAudio) { aaiAudio.pause(); aaiAudio = null; }
-    fetch('https://api.elevenlabs.io/v1/text-to-speech/' + AAI_VOICE + '/stream', {
+    fetch(API_BASE + '/tts', {
       method: 'POST',
-      headers: { 'xi-api-key': AAI_XI_KEY, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
-      body: JSON.stringify({ text: clean, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: clean })
     })
     .then(function(r) {
-      if (!r.ok) { r.text().then(function(t){ console.error('[AAI voice] ElevenLabs error:', r.status, t); }); return null; }
+      if (!r.ok) { r.text().then(function(t){ console.error('[AAI voice] TTS error:', r.status, t); }); return null; }
       return r.blob();
     })
     .then(function(blob) {
