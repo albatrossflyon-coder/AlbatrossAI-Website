@@ -193,36 +193,16 @@
   }
   var socialToken = localStorage.getItem('aai_social_token') || '';
 
-  // --- Voice (ElevenLabs TTS via server proxy) ---
-  var aaiAudio    = null;
-  var aaiUnlockAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-  var aaiUnlocked = false;
-  function unlockAudio() {
-    if (aaiUnlocked) return;
-    aaiUnlocked = true;
-    aaiUnlockAudio.play().catch(function(){});
-  }
-
+  // --- Voice (Web Speech API) ---
   function speak(text) {
     if (!voiceOn) return;
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
     var clean = text.replace(/\*\*/g, '').replace(/[#*_`]/g, '').slice(0, 500);
-    if (aaiAudio) { aaiAudio.pause(); aaiAudio = null; }
-    fetch(API_BASE + '/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: clean })
-    })
-    .then(function(r) {
-      if (!r.ok) { r.text().then(function(t){ console.error('[AAI voice] TTS error:', r.status, t); }); return null; }
-      return r.blob();
-    })
-    .then(function(blob) {
-      if (!blob) return;
-      var url = URL.createObjectURL(blob);
-      aaiAudio = new Audio(url);
-      aaiAudio.play().catch(function(e){ console.error('[AAI voice] play() blocked:', e); });
-    })
-    .catch(function(e){ console.error('[AAI voice] fetch failed:', e); });
+    var utter = new SpeechSynthesisUtterance(clean);
+    utter.rate = 1.0;
+    utter.pitch = 1.0;
+    window.speechSynthesis.speak(utter);
   }
 
   voiceBtn.classList.add('aai-on');
@@ -231,7 +211,7 @@
     voiceBtn.classList.toggle('aai-on', voiceOn);
     voiceBtn.title = voiceOn ? 'Mute voice' : 'Unmute voice';
     voiceBtn.textContent = voiceOn ? '🔊' : '🔇';
-    if (!voiceOn && aaiAudio) { aaiAudio.pause(); aaiAudio = null; }
+    if (!voiceOn && window.speechSynthesis) { window.speechSynthesis.cancel(); }
   });
 
   // --- Teaser auto-show after 3s ---
