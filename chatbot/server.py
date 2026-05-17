@@ -377,15 +377,16 @@ tr:nth-child(even){{background:#f5f5f5}}</style></head><body>
 @app.get("/access")
 async def access_page(from_: str = Query("unknown", alias="from")):
     all_channels = {
-        "youtube":  [{"id": 1, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"}],
+        "youtube":  [{"id": 1, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
+                     {"id": 2, "platform": "LinkedIn", "label": "Chris Brown",       "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"}],
         "x":        [{"id": 1, "platform": "X",        "label": "@chrisbrown75054",  "action": "Follow",    "url": SOCIAL_X,        "icon": "𝕏"}],
         "linkedin": [{"id": 1, "platform": "LinkedIn", "label": "Chris Brown",       "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"}],
-        "facebook": [{"id": 1, "platform": "Facebook", "label": "Albatross AI Page", "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"}],
+        "facebook": [{"id": 1, "platform": "Facebook", "label": "Albatross AI Page", "action": "Follow",    "url": SOCIAL_FACEBOOK, "icon": "f"}],
     }
     channels = all_channels.get(from_.lower(), [
-        {"id": 1, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
-        {"id": 2, "platform": "LinkedIn", "label": "Chris Brown",       "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
-        {"id": 3, "platform": "Facebook", "label": "Albatross AI Page", "action": "Like",      "url": SOCIAL_FACEBOOK, "icon": "f"},
+        {"id": 1, "platform": "LinkedIn", "label": "Chris Brown",       "action": "Follow",    "url": SOCIAL_LINKEDIN, "icon": "in"},
+        {"id": 2, "platform": "YouTube",  "label": "Albatross AI",      "action": "Subscribe", "url": SOCIAL_YT_MAIN,  "icon": "▶"},
+        {"id": 3, "platform": "Facebook", "label": "Albatross AI Page", "action": "Follow",    "url": SOCIAL_FACEBOOK, "icon": "f"},
     ])
     steps_html = ""
     for c in channels:
